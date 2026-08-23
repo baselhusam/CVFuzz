@@ -55,18 +55,28 @@ export async function getRun(id: string) {
 }
 
 export async function getTransformConfig() {
-  return request<{
+  const payload = await request<{
     version: number
     transforms: TransformConfig[]
-    default_device: InferenceDevice["id"]
-    devices: InferenceDevice[]
+    default_device?: InferenceDevice["id"]
+    devices?: InferenceDevice[]
   }>("/v1/config")
+  const supportsDeviceSelection = Array.isArray(payload.devices)
+  const devices = supportsDeviceSelection
+    ? payload.devices
+    : [{ id: "auto" as const, name: "Automatic", description: "Server default", available: true }]
+  return {
+    ...payload,
+    devices,
+    default_device: payload.default_device ?? "auto",
+    supportsDeviceSelection,
+  }
 }
 
 type RunSubmission = {
   model: File
   video: File
-  device: InferenceDevice["id"]
+  device?: InferenceDevice["id"]
   onProgress: (progress: RunProgress) => void
   onAccepted?: (run: RunRecord) => void
   onUpdate?: (run: RunRecord) => void
@@ -86,7 +96,7 @@ export async function submitRun({
   const body = new FormData()
   body.append("model", model)
   body.append("video", video)
-  body.append("device", device)
+  if (device) body.append("device", device)
   const accepted = await request<{ id: string }>("/v1/runs", { method: "POST", body })
   let run = await getRun(accepted.id)
   onAccepted?.(run)

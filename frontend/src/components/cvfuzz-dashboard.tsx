@@ -175,6 +175,7 @@ function RunSetup({
   video,
   devices,
   device,
+  supportsDeviceSelection,
   transforms,
   onModel,
   onVideo,
@@ -189,6 +190,7 @@ function RunSetup({
   video: File | null
   devices: InferenceDevice[]
   device: InferenceDevice["id"]
+  supportsDeviceSelection: boolean
   transforms: TransformConfig[]
   onModel: (file: File | null) => void
   onVideo: (file: File | null) => void
@@ -237,11 +239,16 @@ function RunSetup({
         <div className="flex flex-col gap-2 border-t border-border p-4 md:flex-row md:items-center md:justify-between md:p-5">
           <div>
             <p className="font-mono text-[9px] tracking-[0.15em] text-muted-foreground">INFERENCE DEVICE</p>
-            <p className="mt-1 text-xs text-muted-foreground">Apple GPU is used automatically when MPS is available.</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {supportsDeviceSelection
+                ? "Apple GPU is used automatically when MPS is available."
+                : "This API version uses its server-default inference device."}
+            </p>
           </div>
           <select
             value={device}
             onChange={(event) => onDevice(event.target.value as InferenceDevice["id"])}
+            disabled={!supportsDeviceSelection}
             className="h-10 border border-border bg-background px-3 text-xs font-medium outline-none focus:border-signal"
             aria-label="Inference device"
           >
@@ -402,6 +409,7 @@ export function CVFuzzDashboard() {
   const [video, setVideo] = useState<File | null>(null)
   const [devices, setDevices] = useState<InferenceDevice[]>([])
   const [device, setDevice] = useState<InferenceDevice["id"]>("auto")
+  const [supportsDeviceSelection, setSupportsDeviceSelection] = useState(false)
   const [running, setRunning] = useState(false)
   const [loadingRuns, setLoadingRuns] = useState(true)
   const [progress, setProgress] = useState(0)
@@ -441,8 +449,9 @@ export function CVFuzzDashboard() {
         if (cancelled) return
         setRuns(initialRuns)
         setTransforms(initialConfig.transforms)
-        setDevices(initialConfig.devices)
+        setDevices(initialConfig.devices ?? [])
         setDevice(initialConfig.default_device)
+        setSupportsDeviceSelection(initialConfig.supportsDeviceSelection)
         setSelectedId(initialRun?.id ?? null)
         setSelectedRun(initialRun)
       } catch (cause) {
@@ -487,7 +496,7 @@ export function CVFuzzDashboard() {
       const completed = await submitRun({
         model,
         video,
-        device,
+        device: supportsDeviceSelection ? device : undefined,
         onProgress: (state) => { setProgress(state.progress); setProgressLabel(state.label) },
         onAccepted: (run) => { setSelectedId(run.id); setSelectedRun(run); void refreshRuns() },
         onUpdate: (run) => setSelectedRun(run),
@@ -507,7 +516,7 @@ export function CVFuzzDashboard() {
       <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] lg:grid-cols-[280px_minmax(0,1fr)]">
         <RunsSidebar runs={runs} selectedId={selectedId} loading={loadingRuns} onSelect={(id) => void selectRun(id)} onRefresh={() => void refreshRuns()} onNewRun={newRun} />
         <main className="min-w-0 px-4 sm:px-6 xl:px-8">
-          {selectedRun ? <ActiveRun key={selectedRun.id} run={selectedRun} /> : <RunSetup model={model} video={video} devices={devices} device={device} transforms={transforms} onModel={setModel} onVideo={setVideo} onDevice={setDevice} onRun={() => void handleRun()} running={running} progress={progress} progressLabel={progressLabel} error={error} />}
+          {selectedRun ? <ActiveRun key={selectedRun.id} run={selectedRun} /> : <RunSetup model={model} video={video} devices={devices} device={device} supportsDeviceSelection={supportsDeviceSelection} transforms={transforms} onModel={setModel} onVideo={setVideo} onDevice={setDevice} onRun={() => void handleRun()} running={running} progress={progress} progressLabel={progressLabel} error={error} />}
           {error && selectedRun && <div className="fixed bottom-5 right-5 z-50 flex max-w-md items-start gap-3 border border-alert/40 bg-card p-4 shadow-xl"><AlertTriangle className="mt-0.5 size-4 shrink-0 text-alert" /><div><p className="text-xs font-semibold">API error</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{error}</p></div></div>}
         </main>
       </div>
