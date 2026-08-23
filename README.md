@@ -12,8 +12,9 @@ such as:
 > At what blur kernel, exposure loss, fog strength, or occlusion percentage does this specific
 > detection fail?
 
-CVFuzz is currently an early backend and CLI implementation. The first supported model adapter
-targets Ultralytics YOLO object-detection models.
+CVFuzz currently includes a Python backend and CLI plus a Next.js frontend for the visual
+robustness workflow. The first supported model adapter targets Ultralytics YOLO object-detection
+models.
 
 ## Current capabilities
 
@@ -101,6 +102,19 @@ cvfuzz inspect .cvfuzz/runs/<run-id>
 
 See the [backend documentation](backend/README.md) for package and configuration details.
 
+## Web interface
+
+The [frontend](frontend/README.md) provides the model/video upload workflow, synchronized
+original and augmentation video wall, light and dark themes, run progress, and comparison
+metrics. Until the Python engine gains an HTTP and video-rendering layer, it uses a clearly
+labeled local preview workflow and a typed API adapter for the future `POST /v1/runs` endpoint.
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
 ## YAML transformation configuration
 
 Each transformation identifies one ordered `search_parameter`. Other parameters can contain
@@ -171,6 +185,11 @@ artifact generation.
 CVFuzz/
 ├── AGENTS.md
 ├── README.md
+├── frontend/
+│   └── src/
+│       ├── app/
+│       ├── components/
+│       └── lib/
 └── backend/
     ├── configs/
     ├── src/cvfuzz/
@@ -187,7 +206,7 @@ CVFuzz/
 - Detection overlays, HTML reports, and shareable failure cards
 - Model and run comparison
 - Additional model formats and task adapters
-- Web interface and API
+- Backend HTTP API and full-length annotated video rendering
 - CI robustness policies and regression gates
 
 ## License note
