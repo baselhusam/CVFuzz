@@ -139,6 +139,16 @@
       border-top: 0;
     }
 
+    .presentation-clean .page-header,
+    .presentation-clean .page-footer,
+    .presentation-clean .eyebrow,
+    .presentation-clean .divider-index,
+    .presentation-clean .small-caps,
+    .presentation-clean .card-number,
+    .presentation-clean .micro {
+      display: none;
+    }
+
     .eyebrow {
       margin: 0 0 16px;
       color: var(--slate);
@@ -837,6 +847,14 @@
       line-height: 0.86;
     }
 
+    .type-family {
+      margin: 0 0 16px;
+      color: var(--slate);
+      font-size: 18px;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+    }
+
     .type-details {
       display: grid;
       grid-template-columns: 2fr 1fr;
@@ -1381,7 +1399,7 @@
     }
   </style>
 </head>
-<body>
+<body class="presentation-clean">
   <!-- 01 / Cover -->
   <section class="page image-page" style="background-image: url('../assets/cvfuzz-boundary-cover.png');">
     <div class="mast">
@@ -1458,9 +1476,9 @@
         <img class="official-logo" src="../logos/cvfuzz-logo-light.png" alt="CVFuzz light-surface horizontal logo">
       </div>
       <dl class="asset-specs">
-        <div class="asset-spec"><dt>Light master</dt><dd>PNG / 2172 x 724 px</dd></div>
+        <div class="asset-spec"><dt>Light logo</dt><dd>PNG - 2172 x 724 px</dd></div>
         <div class="asset-spec"><dt>Approved surface</dt><dd>White or CVFuzz Paper</dd></div>
-        <div class="asset-spec"><dt>Dark master</dt><dd>Dark fields / 2172 x 724 px</dd></div>
+        <div class="asset-spec"><dt>Dark logo</dt><dd>Dark fields - 2172 x 724 px</dd></div>
       </dl>
     </div>
     <div class="page-footer"><span>Official asset only</span><span>Logo / Master lockup</span></div>
@@ -1492,7 +1510,7 @@
       <h2 class="display-md">Color is signal.</h2>
       <p class="body-copy" style="margin: 12px 0 24px; max-width: 7.2in;">The palette is intentionally narrow. Deep neutral fields create authority; Signal Lime identifies the precise point that matters.</p>
       <div class="swatch-grid">
-        <div class="swatch ink"><span class="swatch-role">Primary</span><div><div class="swatch-name">CVFuzz Ink</div><span class="swatch-value">#0B0E12 / RGB 11 14 18</span></div></div>
+        <div class="swatch ink"><span class="swatch-role">Primary</span><div><div class="swatch-name">CVFuzz Ink</div><span class="swatch-value">#0B0E12 - RGB 11 14 18</span></div></div>
         <div class="swatch signal"><span class="swatch-role">Accent</span><div><div class="swatch-name">Signal Lime</div><span class="swatch-value">#D7FA03</span></div></div>
         <div class="swatch paper"><span class="swatch-role">Surface</span><div><div class="swatch-name">CVFuzz Paper</div><span class="swatch-value">#F7F9F2</span></div></div>
         <div class="swatch mist"><span class="swatch-role">Structure</span><div><div class="swatch-name">Mist</div><span class="swatch-value">#E7ECE3</span></div></div>
@@ -1509,13 +1527,13 @@
       <div class="split" style="align-items: end; margin-bottom: 24px;"><div><p class="eyebrow">Proportion and contrast</p><h2 class="display-md">Use color with intent.</h2></div><p class="body-copy">Brand color guides attention. It must never become the only carrier of state or meaning.</p></div>
       <div class="ratio-layout">
         <div>
-          <div class="color-ratio"><div class="ratio-70">70% / Field</div><div class="ratio-20">20% / Structure</div><div class="ratio-10">10% / Signal</div></div>
+          <div class="color-ratio"><div class="ratio-70">70% Field</div><div class="ratio-20">20% Structure</div><div class="ratio-10">10% Signal</div></div>
           <p class="micro" style="margin-top: 12px;">Recommended visual proportion - not a rigid layout formula.</p>
         </div>
         <div class="contrast-stack">
-          <div class="contrast-chip ink-paper"><strong>Aa</strong><span>Ink on Paper / 18.22:1 / AAA</span></div>
-          <div class="contrast-chip ink-signal"><strong>Aa</strong><span>Ink on Signal / 16.18:1 / AAA</span></div>
-          <div class="contrast-chip signal-white"><strong>Aa</strong><span>Signal on White / 1.20:1 / Fail</span></div>
+          <div class="contrast-chip ink-paper"><strong>Aa</strong><span>Ink on Paper - 18.22:1 - AAA</span></div>
+          <div class="contrast-chip ink-signal"><strong>Aa</strong><span>Ink on Signal - 16.18:1 - AAA</span></div>
+          <div class="contrast-chip signal-white"><strong>Aa</strong><span>Signal on White - 1.20:1 - Fail</span></div>
           <p class="body-copy">Never set small lime text on white. Pair state colors with labels, shapes, patterns, or icons.</p>
         </div>
       </div>
@@ -1538,79 +1556,19 @@
   <section class="page light">
     <div class="page-header"><span>04 / Typography</span><span>CVFuzz / Brand Guidelines / 10</span></div>
     <div class="page-pad" style="padding-top: 0.9in;">
-      <p class="eyebrow">Primary typeface / Space Grotesk</p>
+      <p class="type-family">Space Grotesk</p>
       <div class="type-specimen">Precision<br>under pressure.</div>
       <div class="signal-rule"></div>
       <div class="type-details">
-        <div class="alphabet">ABCDEFGHIJKLMNOPQRSTUVWXYZ<br>abcdefghijklmnopqrstuvwxyz<br>0123456789 / = + - %</div>
+        <div class="alphabet">ABCDEFGHIJKLMNOPQRSTUVWXYZ<br>abcdefghijklmnopqrstuvwxyz<br>0123456789 = + - %</div>
         <div class="type-meta">
           <div class="type-meta-row"><span>Role</span><span>Headlines, interface, reports, explanation</span></div>
           <div class="type-meta-row"><span>Case</span><span>Sentence case by default</span></div>
-          <div class="type-meta-row"><span>Weights</span><span>Regular / Medium / Semibold</span></div>
+          <div class="type-meta-row"><span>Weights</span><span>Regular, Medium, Semibold</span></div>
         </div>
       </div>
     </div>
     <div class="page-footer"><span>Engineered, clear, contemporary</span><span>Typography / Space Grotesk</span></div>
-  </section>
-
-  <!-- 11 / Type hierarchy -->
-  <section class="page light">
-    <div class="page-header"><span>04 / Typography</span><span>CVFuzz / Brand Guidelines / 11</span></div>
-    <div class="page-pad" style="padding-top: 0.93in;">
-      <p class="eyebrow">Hierarchy</p>
-      <h2 class="display-md" style="margin-bottom: 22px;">Explanation and evidence need different voices.</h2>
-      <div class="hierarchy-stage">
-        <div class="hierarchy-main">
-          <p class="micro" style="margin-bottom: 14px;">Space Grotesk / Narrative channel</p>
-          <h3>The bicycle detection fails at 11 px.</h3>
-          <p>Use Sans for the finding, context, guidance, and product interface. Keep long-form lines between roughly 55 and 80 characters.</p>
-        </div>
-        <div class="code-panel">
-          <p class="micro" style="color: var(--signal); margin-bottom: 20px;">IBM Plex Mono / Evidence channel</p>
-          <pre>$ cvfuzz run street.mp4
-
-transform  motion_blur
-object     bicycle #04
-<mark>boundary   kernel = 11 px</mark>
-status     confidence_collapse</pre>
-        </div>
-      </div>
-      <p class="body-copy" style="margin-top: 18px;">Use IBM Plex Mono for parameters, commands, seeds, paths, model identifiers, and reproducibility metadata. Never set narrative paragraphs entirely in monospace.</p>
-    </div>
-    <div class="page-footer"><span>Sans explains. Mono proves.</span><span>Typography / Hierarchy</span></div>
-  </section>
-
-  <!-- 12 / Voice -->
-  <section class="page light">
-    <div class="page-header"><span>05 / Voice</span><span>CVFuzz / Brand Guidelines / 12</span></div>
-    <div class="page-pad" style="padding-top: 0.93in;">
-      <p class="eyebrow">Verbal identity</p>
-      <h2 class="display-md">Say what happened. Then prove it.</h2>
-      <div class="voice-flow"><span>Observation</span><span class="arrow">-></span><span>Boundary</span><span class="arrow">-></span><span>Reproduction</span></div>
-      <p class="lede" style="margin-top: 22px;">The bicycle detection fails at a motion-blur kernel of 11 px. Reproduce it with the saved configuration and seed.</p>
-      <div class="language-columns">
-        <div class="language-box"><h3>Use</h3><p>Probe. Boundary. Evidence. Reproduce. Compare. Stability. Minimum breaking change.</p></div>
-        <div class="language-box dark-box"><h3 class="avoid">Avoid</h3><p>Unbreakable. AI-proof. Perfect. Guaranteed safety. The smartest tester.</p></div>
-      </div>
-    </div>
-    <div class="page-footer"><span>Direct, exact, calm</span><span>Voice / Messaging</span></div>
-  </section>
-
-  <!-- 13 / Graphic language -->
-  <section class="page dark">
-    <div class="page-header"><span>06 / Graphic language</span><span>CVFuzz / Brand Guidelines / 13</span></div>
-    <div class="page-pad" style="padding-top: 0.93in;">
-      <p class="eyebrow">Visual grammar</p>
-      <h2 class="display-md">One deliberate break.</h2>
-      <p class="lede" style="margin: 13px 0 24px;">Keep the field orderly. Introduce one precise offset, fracture, scan, or trail.</p>
-      <div class="grammar-stage">
-        <div class="grammar-frame"></div>
-        <div class="grammar-note"><p class="eyebrow">System rule</p><p>Use detection geometry as structure. Let disruption appear only where the threshold is found. Never decorate with random glitch.</p></div>
-        <span class="micro" style="position: absolute; left: 1.15in; bottom: 0.45in; color: var(--steel);">Stable field</span>
-        <span class="micro" style="position: absolute; left: 5.05in; bottom: 0.45in; color: var(--signal);">Boundary trail</span>
-      </div>
-    </div>
-    <div class="page-footer"><span>Order -> break -> evidence</span><span>Graphic language</span></div>
   </section>
 
   <!-- 14 / Sensor divider -->
@@ -1662,68 +1620,6 @@ status     confidence_collapse</pre>
       <p class="micro" style="margin-top: 14px; color: var(--steel);">Conceptual application mockup / not final UI</p>
     </div>
     <div class="page-footer no-rule" style="z-index: 4;"><span>Product in context</span><span>17</span></div>
-  </section>
-
-  <!-- 18 / Data expression -->
-  <section class="page light">
-    <div class="page-header"><span>08 / Product expression</span><span>CVFuzz / Brand Guidelines / 18</span></div>
-    <div class="page-pad" style="padding-top: 0.93in;">
-      <div class="split" style="align-items: end; margin-bottom: 22px;"><div><p class="eyebrow">Data and interface</p><h2 class="display-md">Show the boundary, not the brand.</h2></div><p class="body-copy">Brand elements frame the result. They never compete with model evidence.</p></div>
-      <div class="data-layout">
-        <div class="data-chart"><div class="chart-line"></div><div class="chart-boundary"><span>Minimum breaking change</span></div><span class="micro" style="position: absolute; left: 24px; bottom: 20px; color: var(--steel);">Transformation severity -></span></div>
-        <div class="data-principles">
-          <div class="data-principle"><strong>Baseline first</strong><span>Always show the stable reference before the changed condition.</span></div>
-          <div class="data-principle"><strong>Boundary second</strong><span>Make the minimum breaking parameter easy to locate and compare.</span></div>
-          <div class="data-principle"><strong>Reproduction always</strong><span>Expose enough model, config, seed, and input context to rerun the result.</span></div>
-          <div class="data-principle"><strong>Semantic colors stay separate</strong><span>Signal Lime cannot mean success, warning, error, and information at once.</span></div>
-        </div>
-      </div>
-    </div>
-    <div class="page-footer"><span>Baseline -> condition -> boundary -> reproduction</span><span>Product / Data expression</span></div>
-  </section>
-
-  <!-- 19 / Boundary divider -->
-  <section class="page image-page" style="background-image: url('../assets/cvfuzz-boundary-cover.png'); background-position: center;">
-    <div class="divider-copy">
-      <p class="eyebrow">From identity to product</p>
-      <h2 class="display-lg">Stable DNA.<br>Flexible system.</h2>
-      <p class="lede" style="margin-top: 20px;">The brand defines the signal. The future design system defines how that signal behaves at scale.</p>
-    </div>
-    <div class="divider-index">Section divider / Design system</div>
-    <div class="page-footer no-rule"><span>Brand foundation</span><span>19</span></div>
-  </section>
-
-  <!-- 20 / Design system bridge -->
-  <section class="page light">
-    <div class="page-header"><span>09 / Product system</span><span>CVFuzz / Brand Guidelines / 20</span></div>
-    <div class="page-pad" style="padding-top: 0.93in;">
-      <p class="eyebrow">Brand -> Design system</p>
-      <h2 class="display-md">Build from stable DNA.</h2>
-      <p class="body-copy" style="margin-top: 12px; max-width: 8.3in;">The brand layer remains recognizable while product tokens, components, and interaction patterns evolve around real platform needs.</p>
-      <div class="system-flow">
-        <article class="system-step"><span class="card-number">01</span><h3>Brand DNA</h3><ul><li>Purpose</li><li>Logo</li><li>Core color</li><li>Voice</li></ul></article>
-        <article class="system-step"><span class="card-number">02</span><h3>Tokens</h3><ul><li>Typography</li><li>Spacing</li><li>Surfaces</li><li>Motion</li></ul></article>
-        <article class="system-step"><span class="card-number">03</span><h3>Components</h3><ul><li>Controls</li><li>Navigation</li><li>Data</li><li>States</li></ul></article>
-        <article class="system-step"><span class="card-number">04</span><h3>Platform</h3><ul><li>Runs</li><li>Reports</li><li>Compare</li><li>Share</li></ul></article>
-      </div>
-    </div>
-    <div class="page-footer"><span>Brand decisions are inputs, not component specifications</span><span>Design system / Bridge</span></div>
-  </section>
-
-  <!-- 21 / Roadmap -->
-  <section class="page dark">
-    <div class="page-header"><span>10 / Evolution</span><span>CVFuzz / Brand Guidelines / 21</span></div>
-    <div class="page-pad" style="padding-top: 0.96in;">
-      <p class="eyebrow">Asset roadmap</p>
-      <h2 class="display-md">Grow one system, not many.</h2>
-      <div class="roadmap">
-        <div class="roadmap-column"><span class="phase">Now</span><h3>Foundation</h3><ol><li>Approved master lockup</li><li>Editable HTML brand book</li><li>Core color system</li><li>Voice and imagery</li></ol></div>
-        <div class="roadmap-column"><span class="phase" style="color: var(--steel);">Next</span><h3>Production set</h3><ol><li>Redrawn vector masters</li><li>Monochrome versions</li><li>Symbol and favicon family</li><li>Export presets</li></ol></div>
-        <div class="roadmap-column"><span class="phase" style="color: var(--steel);">Later</span><h3>Product system</h3><ol><li>Semantic UI tokens</li><li>Component library</li><li>Data palette</li><li>Motion language</li></ol></div>
-      </div>
-      <p class="body-copy" style="margin-top: 28px; max-width: 8.2in;">Do not auto-trace the PNG and call it final. Production variants must be redrawn cleanly, compared against the approved master, and released as one coordinated family.</p>
-    </div>
-    <div class="page-footer"><span>Governance protects coherence</span><span>Evolution / Roadmap</span></div>
   </section>
 
   <!-- 22 / Closing -->
