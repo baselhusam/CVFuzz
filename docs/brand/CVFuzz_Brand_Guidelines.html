@@ -1,0 +1,1768 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CVFuzz Brand Guidelines</title>
+  <meta name="description" content="The visual and verbal identity system for CVFuzz.">
+  <style>
+    @font-face {
+      font-family: "Geist";
+      src: url("../../frontend/node_modules/next/dist/compiled/@vercel/og/Geist-Regular.ttf") format("truetype");
+      font-weight: 100 900;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: "Geist Mono";
+      src: url("../../frontend/node_modules/next/dist/esm/next-devtools/server/font/geist-mono-latin.woff2") format("woff2");
+      font-weight: 100 900;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    :root {
+      --ink: #0b0e12;
+      --ink-2: #12171d;
+      --ink-3: #1a2129;
+      --signal: #d7fa03;
+      --paper: #f7f9f2;
+      --white: #ffffff;
+      --mist: #e7ece3;
+      --slate: #69737f;
+      --steel: #96a0aa;
+      --danger: #f45b69;
+      --page-w: 13.333in;
+      --page-h: 7.5in;
+      --pad-x: 0.66in;
+      --pad-y: 0.52in;
+      --radius-sm: 0.12in;
+      --radius-md: 0.18in;
+      --rule: 1px solid color-mix(in srgb, var(--slate) 22%, transparent);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      background: #20262d;
+      color-scheme: dark;
+    }
+
+    body {
+      margin: 0;
+      padding: 48px 0;
+      display: grid;
+      justify-content: center;
+      gap: 24px;
+      background:
+        radial-gradient(circle at 50% 0%, #35404a 0, transparent 42rem),
+        #20262d;
+      font-family: "Geist", sans-serif;
+      font-synthesis: none;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: geometricPrecision;
+    }
+
+    .page {
+      position: relative;
+      width: var(--page-w);
+      height: var(--page-h);
+      overflow: hidden;
+      isolation: isolate;
+      break-after: page;
+      page-break-after: always;
+      background: var(--paper);
+      color: var(--ink);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.32);
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .page:last-child {
+      break-after: auto;
+      page-break-after: auto;
+    }
+
+    .page.dark {
+      color: var(--paper);
+      background: var(--ink);
+    }
+
+    .page.light {
+      color: var(--ink);
+      background: var(--paper);
+    }
+
+    .page-pad {
+      height: 100%;
+      padding: var(--pad-y) var(--pad-x);
+    }
+
+    .page-header,
+    .page-footer {
+      position: absolute;
+      left: var(--pad-x);
+      right: var(--pad-x);
+      z-index: 8;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--slate);
+      font-family: "Geist Mono", monospace;
+      font-size: 8px;
+      letter-spacing: 0.18em;
+      line-height: 1;
+      text-transform: uppercase;
+    }
+
+    .dark .page-header,
+    .dark .page-footer,
+    .image-page .page-header,
+    .image-page .page-footer {
+      color: rgba(247, 249, 242, 0.55);
+    }
+
+    .page-header {
+      top: 0.34in;
+    }
+
+    .page-footer {
+      bottom: 0.28in;
+      padding-top: 0.14in;
+      border-top: var(--rule);
+    }
+
+    .page-footer.no-rule {
+      border-top: 0;
+    }
+
+    .eyebrow {
+      margin: 0 0 16px;
+      color: var(--slate);
+      font-family: "Geist Mono", monospace;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      line-height: 1.2;
+      text-transform: uppercase;
+    }
+
+    .dark .eyebrow,
+    .image-page .eyebrow {
+      color: var(--signal);
+    }
+
+    h1,
+    h2,
+    h3,
+    p,
+    blockquote,
+    figure {
+      margin: 0;
+    }
+
+    h1,
+    h2,
+    h3 {
+      font-weight: 540;
+      letter-spacing: -0.045em;
+      line-height: 0.96;
+    }
+
+    .display-xl {
+      max-width: 10.6in;
+      font-size: 72px;
+      letter-spacing: -0.055em;
+      line-height: 0.93;
+    }
+
+    .display-lg {
+      max-width: 9.5in;
+      font-size: 52px;
+      line-height: 0.98;
+    }
+
+    .display-md {
+      font-size: 40px;
+      line-height: 1;
+    }
+
+    .lede {
+      max-width: 6.2in;
+      color: var(--slate);
+      font-size: 17px;
+      line-height: 1.45;
+      letter-spacing: -0.012em;
+    }
+
+    .dark .lede,
+    .image-page .lede {
+      color: rgba(247, 249, 242, 0.72);
+    }
+
+    .body-copy {
+      color: var(--slate);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .dark .body-copy {
+      color: var(--steel);
+    }
+
+    .micro {
+      color: var(--slate);
+      font-family: "Geist Mono", monospace;
+      font-size: 8px;
+      letter-spacing: 0.08em;
+      line-height: 1.45;
+      text-transform: uppercase;
+    }
+
+    .signal-rule {
+      width: 1.36in;
+      height: 8px;
+      margin: 24px 0 28px;
+      background: var(--signal);
+    }
+
+    .brand-plate {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 14px 20px;
+      border-radius: 10px;
+      background: var(--paper);
+      box-shadow: 0 12px 38px rgba(0, 0, 0, 0.18);
+    }
+
+    .brand-plate img {
+      display: block;
+      width: 272px;
+      height: auto;
+    }
+
+    .brand-plate.compact {
+      padding: 9px 13px;
+      border-radius: 7px;
+    }
+
+    .brand-plate.compact img {
+      width: 176px;
+    }
+
+    .official-logo {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.54in;
+    }
+
+    .split-40 {
+      display: grid;
+      grid-template-columns: 0.8fr 1.2fr;
+      gap: 0.56in;
+    }
+
+    .split-60 {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 0.56in;
+    }
+
+    .cards-4,
+    .cards-3,
+    .cards-2 {
+      display: grid;
+      gap: 18px;
+    }
+
+    .cards-4 {
+      grid-template-columns: repeat(4, 1fr);
+    }
+
+    .cards-3 {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .cards-2 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .card {
+      position: relative;
+      min-height: 140px;
+      padding: 22px;
+      overflow: hidden;
+      border: 1px solid var(--mist);
+      border-radius: var(--radius-md);
+      background: var(--white);
+    }
+
+    .dark .card {
+      border-color: rgba(255, 255, 255, 0.07);
+      background: var(--ink-2);
+    }
+
+    .card-number {
+      display: block;
+      margin-bottom: 28px;
+      color: var(--signal);
+      font-family: "Geist Mono", monospace;
+      font-size: 10px;
+      letter-spacing: 0.15em;
+    }
+
+    .card h3 {
+      margin-bottom: 12px;
+      font-size: 23px;
+      letter-spacing: -0.03em;
+    }
+
+    .card p {
+      color: var(--slate);
+      font-size: 12px;
+      line-height: 1.48;
+    }
+
+    .dark .card p {
+      color: var(--steel);
+    }
+
+    .mono {
+      font-family: "Geist Mono", monospace;
+    }
+
+    .image-page {
+      color: var(--paper);
+      background-position: center;
+      background-repeat: no-repeat;
+      background-size: cover;
+    }
+
+    .image-page::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      background:
+        linear-gradient(90deg, rgba(6, 8, 11, 0.9) 0%, rgba(6, 8, 11, 0.58) 38%, rgba(6, 8, 11, 0.08) 72%),
+        linear-gradient(0deg, rgba(6, 8, 11, 0.62), transparent 42%);
+    }
+
+    .divider-copy {
+      position: absolute;
+      left: var(--pad-x);
+      bottom: 0.9in;
+      width: 5.1in;
+      z-index: 4;
+    }
+
+    .divider-copy .display-lg {
+      max-width: 5.5in;
+    }
+
+    .divider-index {
+      position: absolute;
+      right: 0.48in;
+      top: 50%;
+      color: rgba(247, 249, 242, 0.45);
+      font-family: "Geist Mono", monospace;
+      font-size: 8px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      transform: rotate(90deg) translateX(50%);
+      transform-origin: right top;
+    }
+
+    .mast {
+      position: absolute;
+      top: 0.42in;
+      left: var(--pad-x);
+      z-index: 6;
+    }
+
+    .mast .brand-plate {
+      padding: 10px 14px;
+    }
+
+    .mast .brand-plate img {
+      width: 190px;
+    }
+
+    .quote-mark {
+      color: var(--signal);
+      font-size: 84px;
+      line-height: 0.65;
+    }
+
+    .principle-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 22px;
+    }
+
+    .principle {
+      display: grid;
+      grid-template-columns: 32px 1fr;
+      gap: 14px;
+      align-items: start;
+      padding-top: 12px;
+      border-top: var(--rule);
+    }
+
+    .principle .num {
+      color: var(--signal);
+      font-family: "Geist Mono", monospace;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+    }
+
+    .principle strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 15px;
+      font-weight: 540;
+    }
+
+    .principle span:last-child {
+      color: var(--slate);
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    .logo-stage {
+      display: grid;
+      place-items: center;
+      min-height: 3.35in;
+      padding: 0.55in 0.72in;
+      border: 1px solid var(--mist);
+      border-radius: 18px;
+      background: var(--white);
+    }
+
+    .logo-stage .official-logo {
+      max-width: 8.7in;
+    }
+
+    .asset-specs {
+      display: grid;
+      grid-template-columns: 1.3fr 0.8fr 1fr;
+      gap: 18px;
+      margin-top: 16px;
+    }
+
+    .asset-spec {
+      padding-top: 11px;
+      border-top: 1px solid var(--mist);
+    }
+
+    .asset-spec dt {
+      margin-bottom: 8px;
+      color: var(--slate);
+      font-family: "Geist Mono", monospace;
+      font-size: 8px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .asset-spec dd {
+      margin: 0;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .anatomy-stage {
+      position: relative;
+      height: 3.75in;
+      border: 1px solid var(--mist);
+      border-radius: 18px;
+      background: var(--white);
+    }
+
+    .anatomy-stage .official-logo {
+      position: absolute;
+      top: 0.96in;
+      left: 1.62in;
+      width: 8.45in;
+    }
+
+    .callout {
+      position: absolute;
+      width: 1.72in;
+      color: var(--slate);
+      font-family: "Geist Mono", monospace;
+      font-size: 8px;
+      letter-spacing: 0.04em;
+      line-height: 1.42;
+      text-transform: uppercase;
+    }
+
+    .callout strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--ink);
+      font-family: "Geist", sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    .callout::after {
+      content: "";
+      position: absolute;
+      width: 1px;
+      background: var(--signal);
+    }
+
+    .callout.c1 {
+      top: 0.2in;
+      left: 1.48in;
+    }
+
+    .callout.c1::after {
+      left: 0.12in;
+      top: 0.55in;
+      height: 0.76in;
+    }
+
+    .callout.c2 {
+      bottom: 0.06in;
+      left: 3.08in;
+    }
+
+    .callout.c2::after {
+      left: 0.12in;
+      bottom: 0.56in;
+      height: 0.62in;
+    }
+
+    .callout.c3 {
+      top: 0.2in;
+      left: 7.64in;
+    }
+
+    .callout.c3::after {
+      left: 0.12in;
+      top: 0.55in;
+      height: 0.68in;
+    }
+
+    .callout.c4 {
+      bottom: 0.18in;
+      right: 1.0in;
+    }
+
+    .callout.c4::after {
+      left: 0.12in;
+      bottom: 0.56in;
+      height: 0.55in;
+    }
+
+    .safe-zone {
+      position: relative;
+      display: grid;
+      place-items: center;
+      height: 2.45in;
+      border: 1px dashed var(--signal);
+      background: var(--white);
+    }
+
+    .safe-zone::before,
+    .safe-zone::after {
+      position: absolute;
+      color: var(--slate);
+      font-family: "Geist Mono", monospace;
+      font-size: 8px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .safe-zone::before {
+      content: "1x";
+      top: -18px;
+      left: 26px;
+    }
+
+    .safe-zone::after {
+      content: "1x";
+      right: -27px;
+      bottom: 22px;
+      transform: rotate(90deg);
+    }
+
+    .safe-zone .official-logo {
+      width: 7.35in;
+    }
+
+    .scale-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .scale-sample {
+      display: grid;
+      align-content: end;
+      height: 1.45in;
+      padding: 15px;
+      border: 1px solid var(--mist);
+      border-radius: 12px;
+      background: var(--white);
+    }
+
+    .scale-sample img {
+      max-width: 100%;
+      height: auto;
+    }
+
+    .scale-sample.s2 img {
+      width: 76%;
+    }
+
+    .scale-sample.s3 img {
+      width: 49%;
+    }
+
+    .scale-sample span {
+      margin-top: 10px;
+      color: var(--slate);
+      font-family: "Geist Mono", monospace;
+      font-size: 7px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .background-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .background-card {
+      position: relative;
+      display: grid;
+      place-items: center;
+      height: 2.9in;
+      overflow: hidden;
+      border: 1px solid var(--mist);
+      border-radius: 16px;
+      background: var(--white);
+    }
+
+    .background-card.paper {
+      background: var(--paper);
+    }
+
+    .background-card.dark-field {
+      background:
+        radial-gradient(circle at 70% 30%, rgba(215, 250, 3, 0.12), transparent 38%),
+        var(--ink);
+    }
+
+    .background-card.photo-field {
+      background: url("assets/cvfuzz-divider-fog.png") 42% center / cover no-repeat;
+    }
+
+    .background-card > img {
+      width: 78%;
+    }
+
+    .background-card .brand-plate img {
+      width: 148px;
+    }
+
+    .background-card .brand-plate {
+      padding: 10px 12px;
+      border-radius: 7px;
+    }
+
+    .approval {
+      position: absolute;
+      left: 14px;
+      bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 9px;
+      border-radius: 99px;
+      background: rgba(11, 14, 18, 0.88);
+      color: var(--paper);
+      font-family: "Geist Mono", monospace;
+      font-size: 7px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .approval::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--signal);
+    }
+
+    .approval.caution::before {
+      border-radius: 1px;
+      background: var(--danger);
+      transform: rotate(45deg);
+    }
+
+    .swatch-grid {
+      display: grid;
+      grid-template-columns: 2fr 1.35fr 1.15fr 1fr 1fr;
+      gap: 12px;
+      height: 3.4in;
+    }
+
+    .swatch {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 18px;
+      border: 1px solid var(--mist);
+      border-radius: 16px;
+      color: var(--ink);
+    }
+
+    .swatch.ink,
+    .swatch.slate {
+      color: var(--paper);
+    }
+
+    .swatch.ink { background: var(--ink); }
+    .swatch.signal { background: var(--signal); }
+    .swatch.paper { background: var(--paper); }
+    .swatch.mist { background: var(--mist); }
+    .swatch.slate { background: var(--slate); }
+
+    .swatch-role,
+    .swatch-value {
+      font-family: "Geist Mono", monospace;
+      font-size: 8px;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+    }
+
+    .swatch-name {
+      margin-bottom: 8px;
+      font-size: 16px;
+      font-weight: 540;
+    }
+
+    .ratio-layout {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 0.4in;
+      align-items: stretch;
+    }
+
+    .color-ratio {
+      display: grid;
+      grid-template-columns: 7fr 2fr 1fr;
+      height: 3.4in;
+      overflow: hidden;
+      border-radius: 16px;
+    }
+
+    .color-ratio > div {
+      position: relative;
+      display: flex;
+      align-items: flex-end;
+      padding: 16px;
+      font-family: "Geist Mono", monospace;
+      font-size: 8px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .ratio-70 { background: var(--ink); color: var(--paper); }
+    .ratio-20 { background: var(--mist); color: var(--ink); }
+    .ratio-10 { background: var(--signal); color: var(--ink); }
+
+    .contrast-stack {
+      display: grid;
+      gap: 11px;
+    }
+
+    .contrast-chip {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      min-height: 66px;
+      padding: 14px 16px;
+      border-radius: 12px;
+    }
+
+    .contrast-chip strong {
+      font-size: 20px;
+      font-weight: 540;
+    }
+
+    .contrast-chip span {
+      font-family: "Geist Mono", monospace;
+      font-size: 8px;
+      letter-spacing: 0.1em;
+    }
+
+    .contrast-chip.ink-paper { background: var(--paper); color: var(--ink); border: 1px solid var(--mist); }
+    .contrast-chip.ink-signal { background: var(--signal); color: var(--ink); }
+    .contrast-chip.signal-white { background: var(--white); color: var(--signal); border: 1px solid var(--mist); }
+
+    .type-specimen {
+      font-size: 98px;
+      letter-spacing: -0.065em;
+      line-height: 0.86;
+    }
+
+    .type-details {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 0.5in;
+      align-items: end;
+      margin-top: 34px;
+    }
+
+    .alphabet {
+      font-size: 29px;
+      letter-spacing: -0.02em;
+      line-height: 1.28;
+    }
+
+    .type-meta {
+      display: grid;
+      gap: 12px;
+    }
+
+    .type-meta-row {
+      display: grid;
+      grid-template-columns: 0.8fr 1.2fr;
+      gap: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--mist);
+      font-size: 11px;
+    }
+
+    .type-meta-row span:first-child {
+      color: var(--slate);
+      font-family: "Geist Mono", monospace;
+      font-size: 8px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .hierarchy-stage {
+      display: grid;
+      grid-template-columns: 1.25fr 0.75fr;
+      gap: 0.48in;
+    }
+
+    .hierarchy-main {
+      padding: 28px;
+      border-radius: 16px;
+      background: var(--white);
+      border: 1px solid var(--mist);
+    }
+
+    .hierarchy-main h3 {
+      margin-bottom: 22px;
+      font-size: 46px;
+      line-height: 0.98;
+    }
+
+    .hierarchy-main p {
+      max-width: 5.6in;
+      color: var(--slate);
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    .code-panel {
+      padding: 24px;
+      border-radius: 16px;
+      background: var(--ink);
+      color: var(--paper);
+    }
+
+    .code-panel pre {
+      margin: 0;
+      font-family: "Geist Mono", monospace;
+      font-size: 11px;
+      line-height: 1.9;
+      white-space: pre-wrap;
+    }
+
+    .code-panel mark {
+      background: none;
+      color: var(--signal);
+    }
+
+    .voice-flow {
+      display: grid;
+      grid-template-columns: repeat(5, auto);
+      align-items: center;
+      justify-content: start;
+      gap: 18px;
+      margin-top: 26px;
+      font-size: 27px;
+      letter-spacing: -0.03em;
+    }
+
+    .voice-flow .arrow {
+      color: var(--signal);
+      font-family: "Geist Mono", monospace;
+      font-size: 18px;
+    }
+
+    .language-columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-top: 26px;
+    }
+
+    .language-box {
+      min-height: 1.72in;
+      padding: 21px;
+      border-radius: 14px;
+      background: var(--white);
+      border: 1px solid var(--mist);
+    }
+
+    .language-box.dark-box {
+      color: var(--paper);
+      background: var(--ink);
+      border-color: var(--ink);
+    }
+
+    .language-box h3 {
+      margin-bottom: 14px;
+      color: var(--signal);
+      font-family: "Geist Mono", monospace;
+      font-size: 9px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .language-box p {
+      font-size: 15px;
+      line-height: 1.45;
+    }
+
+    .language-box .avoid {
+      color: var(--danger);
+    }
+
+    .grammar-stage {
+      position: relative;
+      height: 3.55in;
+      overflow: hidden;
+      border-radius: 16px;
+      background:
+        linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+        var(--ink-2);
+      background-size: 24px 24px;
+    }
+
+    .grammar-frame {
+      position: absolute;
+      left: 1.15in;
+      top: 0.75in;
+      width: 4.4in;
+      height: 1.75in;
+      border: 3px solid var(--signal);
+      border-right-color: transparent;
+    }
+
+    .grammar-frame::after {
+      content: "";
+      position: absolute;
+      right: -1.7in;
+      bottom: -0.6in;
+      width: 1.85in;
+      height: 1.1in;
+      background:
+        radial-gradient(circle, var(--signal) 0 3px, transparent 4px) 0 0 / 19px 19px;
+      transform: skewY(14deg);
+      mask-image: linear-gradient(90deg, #000, transparent);
+    }
+
+    .grammar-note {
+      position: absolute;
+      right: 0.7in;
+      top: 0.72in;
+      width: 2.65in;
+      padding: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      background: rgba(11, 14, 18, 0.88);
+    }
+
+    .grammar-note p {
+      color: var(--steel);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .image-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr 0.85fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 12px;
+      height: 4.25in;
+    }
+
+    .image-tile {
+      position: relative;
+      overflow: hidden;
+      border-radius: 14px;
+      background: var(--ink);
+    }
+
+    .image-tile:first-child {
+      grid-row: 1 / 3;
+    }
+
+    .image-tile img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .image-tile figcaption {
+      position: absolute;
+      left: 11px;
+      bottom: 11px;
+      padding: 7px 9px;
+      border-radius: 7px;
+      background: rgba(11, 14, 18, 0.78);
+      color: var(--paper);
+      font-family: "Geist Mono", monospace;
+      font-size: 7px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .application-page {
+      background: var(--ink);
+    }
+
+    .application-image {
+      position: absolute;
+      inset: 0 0 0 32%;
+      background: url("assets/cvfuzz-workstation-mockup.png") center / cover no-repeat;
+    }
+
+    .application-page::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      background: linear-gradient(90deg, var(--ink) 0 29%, rgba(11, 14, 18, 0.82) 40%, transparent 70%);
+    }
+
+    .application-copy {
+      position: relative;
+      z-index: 3;
+      width: 4.1in;
+      padding: 0.78in 0 0 var(--pad-x);
+    }
+
+    .application-copy .brand-plate {
+      margin-top: 28px;
+    }
+
+    .application-copy .brand-plate img {
+      width: 220px;
+    }
+
+    .data-layout {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 0.45in;
+      height: 4.05in;
+    }
+
+    .data-chart {
+      position: relative;
+      overflow: hidden;
+      border-radius: 16px;
+      background:
+        linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+        var(--ink);
+      background-size: 34px 34px;
+    }
+
+    .chart-line {
+      position: absolute;
+      left: 0.55in;
+      right: 0.55in;
+      bottom: 1.2in;
+      height: 2px;
+      background: var(--signal);
+      transform: rotate(-8deg);
+      transform-origin: left center;
+    }
+
+    .chart-line::before,
+    .chart-line::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      width: 13px;
+      height: 13px;
+      border: 3px solid var(--signal);
+      border-radius: 50%;
+      background: var(--ink);
+      transform: translateY(-50%);
+    }
+
+    .chart-line::before { left: 32%; }
+    .chart-line::after { left: 73%; width: 19px; height: 19px; }
+
+    .chart-boundary {
+      position: absolute;
+      left: 74%;
+      top: 0.45in;
+      bottom: 0.45in;
+      width: 1px;
+      border-left: 1px dashed var(--signal);
+    }
+
+    .chart-boundary span {
+      position: absolute;
+      top: 12px;
+      left: 10px;
+      color: var(--signal);
+      font-family: "Geist Mono", monospace;
+      font-size: 8px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .data-principles {
+      display: grid;
+      gap: 12px;
+    }
+
+    .data-principle {
+      padding: 18px;
+      border-radius: 12px;
+      background: var(--white);
+      border: 1px solid var(--mist);
+    }
+
+    .data-principle strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 16px;
+    }
+
+    .data-principle span {
+      color: var(--slate);
+      font-size: 10px;
+      line-height: 1.45;
+    }
+
+    .system-flow {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 18px;
+      margin-top: 30px;
+    }
+
+    .system-step {
+      position: relative;
+      min-height: 2.65in;
+      padding: 23px;
+      border: 1px solid var(--mist);
+      border-radius: 16px;
+      background: var(--white);
+    }
+
+    .system-step:last-child {
+      color: var(--paper);
+      border-color: var(--ink);
+      background: var(--ink);
+    }
+
+    .system-step:not(:last-child)::after {
+      content: "->";
+      position: absolute;
+      right: -19px;
+      top: 50%;
+      z-index: 2;
+      color: var(--signal);
+      font-family: "Geist Mono", monospace;
+      font-size: 14px;
+    }
+
+    .system-step h3 {
+      margin: 20px 0 28px;
+      font-size: 21px;
+    }
+
+    .system-step ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      color: var(--slate);
+      font-size: 11px;
+      line-height: 1.8;
+    }
+
+    .system-step:last-child ul {
+      color: var(--steel);
+    }
+
+    .roadmap {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 28px;
+      margin-top: 34px;
+    }
+
+    .roadmap-column {
+      padding-top: 14px;
+      border-top: 2px solid var(--ink-3);
+    }
+
+    .roadmap-column:first-child {
+      border-color: var(--signal);
+    }
+
+    .roadmap-column .phase {
+      color: var(--signal);
+      font-family: "Geist Mono", monospace;
+      font-size: 8px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    .roadmap-column h3 {
+      margin: 20px 0 24px;
+      font-size: 26px;
+    }
+
+    .roadmap-column ol {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      counter-reset: roadmap;
+    }
+
+    .roadmap-column li {
+      counter-increment: roadmap;
+      display: grid;
+      grid-template-columns: 27px 1fr;
+      gap: 9px;
+      margin-bottom: 15px;
+      color: var(--steel);
+      font-size: 11px;
+    }
+
+    .roadmap-column li::before {
+      content: "0" counter(roadmap);
+      color: var(--signal);
+      font-family: "Geist Mono", monospace;
+      font-size: 8px;
+      letter-spacing: 0.1em;
+    }
+
+    .closing-page {
+      background: url("assets/cvfuzz-boundary-cover.png") center / cover no-repeat;
+      color: var(--paper);
+    }
+
+    .closing-page::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, rgba(6, 8, 11, 0.95) 0 42%, rgba(6, 8, 11, 0.28) 76%, rgba(6, 8, 11, 0.5));
+    }
+
+    .closing-content {
+      position: relative;
+      z-index: 2;
+      width: 5.25in;
+      padding: 0.66in;
+    }
+
+    .closing-content .brand-plate {
+      margin-bottom: 0.52in;
+    }
+
+    .closing-content .display-lg {
+      margin-bottom: 26px;
+    }
+
+    .small-caps {
+      color: var(--signal);
+      font-family: "Geist Mono", monospace;
+      font-size: 8px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    @media screen and (max-width: 1400px) {
+      body {
+        padding: 24px 0;
+      }
+
+      .page {
+        transform: scale(0.78);
+        transform-origin: top center;
+        margin-bottom: calc(var(--page-h) * -0.22);
+      }
+    }
+
+    @page {
+      size: 13.333in 7.5in;
+      margin: 0;
+    }
+
+    @media print {
+      html,
+      body {
+        background: transparent;
+      }
+
+      body {
+        display: block;
+        padding: 0;
+      }
+
+      .page {
+        transform: none;
+        margin: 0;
+        box-shadow: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- 01 / Cover -->
+  <section class="page image-page" style="background-image: url('assets/cvfuzz-boundary-cover.png');">
+    <div class="mast">
+      <div class="brand-plate"><img src="../../frontend/public/brand/cvfuzz-logo.png" alt="CVFuzz"></div>
+    </div>
+    <div class="divider-copy">
+      <p class="eyebrow">Identity system / Version 1.0</p>
+      <h1 class="display-xl">Brand<br>Guidelines</h1>
+      <div class="signal-rule"></div>
+      <p class="lede">A visual and verbal system for turning model instability into clear, reproducible evidence.</p>
+    </div>
+    <div class="page-footer no-rule"><span>August 2026</span><span>CVFuzz / 01</span></div>
+  </section>
+
+  <!-- 02 / Premise -->
+  <section class="page light">
+    <div class="page-header"><span>01 / Brand idea</span><span>CVFuzz / Brand Guidelines / 02</span></div>
+    <div class="page-pad" style="padding-top: 1.15in;">
+      <div class="split-60">
+        <div>
+          <p class="eyebrow">The premise</p>
+          <h2 class="display-lg">Find what breaks.<br>Know exactly where.</h2>
+          <div class="signal-rule"></div>
+          <p class="lede">CVFuzz searches for the smallest realistic transformation that destabilizes a computer-vision model.</p>
+        </div>
+        <div style="padding: 0.36in; border-radius: 18px; background: var(--ink); color: var(--paper); align-self: end;">
+          <div class="quote-mark">“</div>
+          <blockquote style="font-size: 28px; line-height: 1.18; letter-spacing: -0.035em;">Turn model instability into a measurable, reproducible boundary.</blockquote>
+          <div style="position: relative; height: 82px; margin-top: 28px; border: 2px solid var(--signal);">
+            <span style="position: absolute; right: -66px; bottom: -17px; width: 80px; height: 46px; background: radial-gradient(circle, var(--signal) 0 3px, transparent 4px) 0 0 / 15px 15px; mask-image: linear-gradient(90deg, #000, transparent);"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="page-footer"><span>Controlled distortion. Clear evidence.</span><span>Brand premise</span></div>
+  </section>
+
+  <!-- 03 / Character -->
+  <section class="page dark">
+    <div class="page-header"><span>01 / Brand idea</span><span>CVFuzz / Brand Guidelines / 03</span></div>
+    <div class="page-pad" style="padding-top: 1.06in;">
+      <p class="eyebrow">Brand character</p>
+      <h2 class="display-lg">Rigorous, never rigid.</h2>
+      <p class="lede" style="margin-top: 20px;">Laboratory precision, investigative curiosity, and calm reporting in equal measure.</p>
+      <div class="cards-4" style="margin-top: 0.52in;">
+        <article class="card"><span class="card-number">01</span><h3>Precise</h3><p>Name the object, parameter, threshold, and evidence.</p></article>
+        <article class="card"><span class="card-number">02</span><h3>Investigative</h3><p>Probe methodically. Let the result lead the story.</p></article>
+        <article class="card"><span class="card-number">03</span><h3>Calm</h3><p>Report risk without drama, fear, or inflated claims.</p></article>
+        <article class="card"><span class="card-number">04</span><h3>Transparent</h3><p>Separate observed instability from proven model error.</p></article>
+      </div>
+    </div>
+    <div class="page-footer"><span>Personality</span><span>Precise / Investigative / Calm / Transparent</span></div>
+  </section>
+
+  <!-- 04 / Fog divider -->
+  <section class="page image-page" style="background-image: url('assets/cvfuzz-divider-fog.png'); background-position: center;">
+    <div class="divider-copy" style="left: auto; right: 0.72in; width: 4.75in; bottom: 1.12in;">
+      <p class="eyebrow">Transformation 01 / Fog</p>
+      <h2 class="display-lg">Visibility is a variable.</h2>
+      <p class="lede" style="margin-top: 20px;">The identity treats every visual effect as a measured condition, never as decoration.</p>
+    </div>
+    <div class="divider-index">Section divider / Image direction</div>
+    <div class="page-footer no-rule"><span>Evidence-led imagery</span><span>04</span></div>
+  </section>
+
+  <!-- 05 / Master logo -->
+  <section class="page light">
+    <div class="page-header"><span>02 / Logo</span><span>CVFuzz / Brand Guidelines / 05</span></div>
+    <div class="page-pad" style="padding-top: 0.93in;">
+      <p class="eyebrow">Approved master</p>
+      <h2 class="display-md">One mark. One source of truth.</h2>
+      <p class="body-copy" style="max-width: 7.2in; margin: 13px 0 22px;">Use the supplied horizontal lockup exactly as provided. It combines the detection symbol and custom wordmark in their approved relationship.</p>
+      <div class="logo-stage">
+        <img class="official-logo" src="../../frontend/public/brand/cvfuzz-logo.png" alt="CVFuzz official horizontal logo">
+      </div>
+      <dl class="asset-specs">
+        <div class="asset-spec"><dt>Current master</dt><dd>Transparent PNG<br>2172 x 724 px</dd></div>
+        <div class="asset-spec"><dt>Approved surface</dt><dd>White or CVFuzz Paper</dd></div>
+        <div class="asset-spec"><dt>Production note</dt><dd>Vector and reverse variants remain part of the asset roadmap.</dd></div>
+      </dl>
+    </div>
+    <div class="page-footer"><span>Official asset only</span><span>Logo / Master lockup</span></div>
+  </section>
+
+  <!-- 06 / Logo anatomy -->
+  <section class="page light">
+    <div class="page-header"><span>02 / Logo</span><span>CVFuzz / Brand Guidelines / 06</span></div>
+    <div class="page-pad" style="padding-top: 0.93in;">
+      <p class="eyebrow">Logo architecture</p>
+      <h2 class="display-md">Order meets disruption.</h2>
+      <p class="body-copy" style="max-width: 7in; margin: 12px 0 20px;">The mark holds four ideas in one continuous lockup. The full logo remains visible throughout this explanation - no cropped or improvised variants.</p>
+      <div class="anatomy-stage">
+        <img class="official-logo" src="../../frontend/public/brand/cvfuzz-logo.png" alt="Annotated CVFuzz logo">
+        <div class="callout c1"><strong>Detection frame</strong>Computer-vision region of interest.</div>
+        <div class="callout c2"><strong>Object target</strong>The individual detection under test.</div>
+        <div class="callout c3"><strong>Signal boundary</strong>The smallest controlled break in stability.</div>
+        <div class="callout c4"><strong>Custom wordmark</strong>Stable weight restores authority.</div>
+      </div>
+    </div>
+    <div class="page-footer"><span>Do not separate without approved artwork</span><span>Logo / Anatomy</span></div>
+  </section>
+
+  <!-- 07 / Clear space and scale -->
+  <section class="page light">
+    <div class="page-header"><span>02 / Logo</span><span>CVFuzz / Brand Guidelines / 07</span></div>
+    <div class="page-pad" style="padding-top: 0.93in;">
+      <div class="split" style="align-items: end; margin-bottom: 20px;">
+        <div><p class="eyebrow">Clear space and scale</p><h2 class="display-md">Give the signal room.</h2></div>
+        <p class="body-copy">Define x as the height of the lime bar above the F. Protect at least 1x on every side; use 2x for covers and hero moments.</p>
+      </div>
+      <div class="safe-zone"><img class="official-logo" src="../../frontend/public/brand/cvfuzz-logo.png" alt="CVFuzz clear space example"></div>
+      <div class="scale-row">
+        <div class="scale-sample s1"><img src="../../frontend/public/brand/cvfuzz-logo.png" alt="Hero scale"><span>Hero / 420 px and above</span></div>
+        <div class="scale-sample s2"><img src="../../frontend/public/brand/cvfuzz-logo.png" alt="Documentation scale"><span>Documentation / 280 px</span></div>
+        <div class="scale-sample s3"><img src="../../frontend/public/brand/cvfuzz-logo.png" alt="Minimum scale"><span>Digital minimum / 180 px</span></div>
+      </div>
+    </div>
+    <div class="page-footer"><span>Never trim away required clear space</span><span>Logo / Clear space</span></div>
+  </section>
+
+  <!-- 08 / Logo backgrounds -->
+  <section class="page light">
+    <div class="page-header"><span>02 / Logo</span><span>CVFuzz / Brand Guidelines / 08</span></div>
+    <div class="page-pad" style="padding-top: 0.93in;">
+      <p class="eyebrow">Background behavior</p>
+      <h2 class="display-md">The right logo, every time.</h2>
+      <p class="body-copy" style="margin: 12px 0 24px; max-width: 7.5in;">The current logo is designed for light surfaces. On dark or photographic fields, use a properly spaced Paper plate. Never place the dark wordmark directly over a dark image.</p>
+      <div class="background-grid">
+        <div class="background-card"><img src="../../frontend/public/brand/cvfuzz-logo.png" alt="Logo on white"><span class="approval">Approved / White</span></div>
+        <div class="background-card paper"><img src="../../frontend/public/brand/cvfuzz-logo.png" alt="Logo on Paper"><span class="approval">Approved / Paper</span></div>
+        <div class="background-card dark-field"><div class="brand-plate compact"><img src="../../frontend/public/brand/cvfuzz-logo.png" alt="Logo on a Paper plate over dark"></div><span class="approval">Approved / Plate</span></div>
+        <div class="background-card photo-field"><div class="brand-plate compact"><img src="../../frontend/public/brand/cvfuzz-logo.png" alt="Logo on a Paper plate over photography"></div><span class="approval">Approved / Plate</span></div>
+      </div>
+      <p class="micro" style="margin-top: 16px;">Do not recolor the logo. Do not generate a reverse version. Do not remove the Paper plate until an approved reverse asset exists.</p>
+    </div>
+    <div class="page-footer"><span>Surface control protects recognition</span><span>Logo / Backgrounds</span></div>
+  </section>
+
+  <!-- 09 / Logo misuse -->
+  <section class="page dark">
+    <div class="page-header"><span>02 / Logo</span><span>CVFuzz / Brand Guidelines / 09</span></div>
+    <div class="page-pad" style="padding-top: 0.96in;">
+      <p class="eyebrow">Misuse</p>
+      <h2 class="display-md">Do not dilute the idea.</h2>
+      <div class="cards-3" style="margin-top: 0.42in; grid-template-rows: 1fr 1fr;">
+        <article class="card"><span class="card-number" style="color: var(--danger);">01 / No</span><h3>Stretch or rotate</h3><p>Preserve the approved aspect ratio and orientation.</p></article>
+        <article class="card"><span class="card-number" style="color: var(--danger);">02 / No</span><h3>Change colors</h3><p>Do not recolor the symbol, accent, or wordmark.</p></article>
+        <article class="card"><span class="card-number" style="color: var(--danger);">03 / No</span><h3>Add effects</h3><p>No glow, shadow, outline, bevel, or gradient.</p></article>
+        <article class="card"><span class="card-number" style="color: var(--danger);">04 / No</span><h3>Create extra glitch</h3><p>The controlled disruption is already intentional.</p></article>
+        <article class="card"><span class="card-number" style="color: var(--danger);">05 / No</span><h3>Place inside a badge</h3><p>Use the approved light plate only when needed.</p></article>
+        <article class="card"><span class="card-number" style="color: var(--danger);">06 / No</span><h3>Retype the wordmark</h3><p>The lettering is custom artwork, not live text.</p></article>
+      </div>
+    </div>
+    <div class="page-footer"><span>Protect intent, not decoration</span><span>Logo / Misuse</span></div>
+  </section>
+
+  <!-- 10 / Palette -->
+  <section class="page light">
+    <div class="page-header"><span>03 / Color</span><span>CVFuzz / Brand Guidelines / 10</span></div>
+    <div class="page-pad" style="padding-top: 0.93in;">
+      <p class="eyebrow">Core palette</p>
+      <h2 class="display-md">Color is signal.</h2>
+      <p class="body-copy" style="margin: 12px 0 24px; max-width: 7.2in;">The palette is intentionally narrow. Deep neutral fields create authority; Signal Lime identifies the precise point that matters.</p>
+      <div class="swatch-grid">
+        <div class="swatch ink"><span class="swatch-role">Primary</span><div><div class="swatch-name">CVFuzz Ink</div><span class="swatch-value">#0B0E12 / RGB 11 14 18</span></div></div>
+        <div class="swatch signal"><span class="swatch-role">Accent</span><div><div class="swatch-name">Signal Lime</div><span class="swatch-value">#D7FA03</span></div></div>
+        <div class="swatch paper"><span class="swatch-role">Surface</span><div><div class="swatch-name">CVFuzz Paper</div><span class="swatch-value">#F7F9F2</span></div></div>
+        <div class="swatch mist"><span class="swatch-role">Structure</span><div><div class="swatch-name">Mist</div><span class="swatch-value">#E7ECE3</span></div></div>
+        <div class="swatch slate"><span class="swatch-role">Secondary</span><div><div class="swatch-name">Slate</div><span class="swatch-value">#69737F</span></div></div>
+      </div>
+    </div>
+    <div class="page-footer"><span>Signal Lime is powerful because it is scarce</span><span>Color / Palette</span></div>
+  </section>
+
+  <!-- 11 / Color usage -->
+  <section class="page light">
+    <div class="page-header"><span>03 / Color</span><span>CVFuzz / Brand Guidelines / 11</span></div>
+    <div class="page-pad" style="padding-top: 0.93in;">
+      <div class="split" style="align-items: end; margin-bottom: 24px;"><div><p class="eyebrow">Proportion and contrast</p><h2 class="display-md">Use color with intent.</h2></div><p class="body-copy">Brand color guides attention. It must never become the only carrier of state or meaning.</p></div>
+      <div class="ratio-layout">
+        <div>
+          <div class="color-ratio"><div class="ratio-70">70% / Field</div><div class="ratio-20">20% / Structure</div><div class="ratio-10">10% / Signal</div></div>
+          <p class="micro" style="margin-top: 12px;">Recommended visual proportion - not a rigid layout formula.</p>
+        </div>
+        <div class="contrast-stack">
+          <div class="contrast-chip ink-paper"><strong>Aa</strong><span>Ink on Paper / 18.22:1 / AAA</span></div>
+          <div class="contrast-chip ink-signal"><strong>Aa</strong><span>Ink on Signal / 16.18:1 / AAA</span></div>
+          <div class="contrast-chip signal-white"><strong>Aa</strong><span>Signal on White / 1.20:1 / Fail</span></div>
+          <p class="body-copy">Never set small lime text on white. Pair state colors with labels, shapes, patterns, or icons.</p>
+        </div>
+      </div>
+    </div>
+    <div class="page-footer"><span>Accessibility is part of the identity</span><span>Color / Usage</span></div>
+  </section>
+
+  <!-- 12 / Motion divider -->
+  <section class="page image-page" style="background-image: url('assets/cvfuzz-divider-motion-blur.png'); background-position: center;">
+    <div class="divider-copy">
+      <p class="eyebrow">Transformation 02 / Motion blur</p>
+      <h2 class="display-lg">Movement has a boundary.</h2>
+      <p class="lede" style="margin-top: 20px;">A cinematic image remains useful only when the condition and threshold stay legible.</p>
+    </div>
+    <div class="divider-index">Section divider / Typography</div>
+    <div class="page-footer no-rule"><span>Measured energy</span><span>12</span></div>
+  </section>
+
+  <!-- 13 / Typography -->
+  <section class="page light">
+    <div class="page-header"><span>04 / Typography</span><span>CVFuzz / Brand Guidelines / 13</span></div>
+    <div class="page-pad" style="padding-top: 0.9in;">
+      <p class="eyebrow">Primary typeface / Geist Sans</p>
+      <div class="type-specimen">Precision<br>under pressure.</div>
+      <div class="signal-rule"></div>
+      <div class="type-details">
+        <div class="alphabet">ABCDEFGHIJKLMNOPQRSTUVWXYZ<br>abcdefghijklmnopqrstuvwxyz<br>0123456789 / = + - %</div>
+        <div class="type-meta">
+          <div class="type-meta-row"><span>Role</span><span>Headlines, interface, reports, explanation</span></div>
+          <div class="type-meta-row"><span>Case</span><span>Sentence case by default</span></div>
+          <div class="type-meta-row"><span>Weights</span><span>Regular / Medium / Semibold</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="page-footer"><span>Clear, compact, contemporary</span><span>Typography / Geist Sans</span></div>
+  </section>
+
+  <!-- 14 / Type hierarchy -->
+  <section class="page light">
+    <div class="page-header"><span>04 / Typography</span><span>CVFuzz / Brand Guidelines / 14</span></div>
+    <div class="page-pad" style="padding-top: 0.93in;">
+      <p class="eyebrow">Hierarchy</p>
+      <h2 class="display-md" style="margin-bottom: 22px;">Explanation and evidence need different voices.</h2>
+      <div class="hierarchy-stage">
+        <div class="hierarchy-main">
+          <p class="micro" style="margin-bottom: 14px;">Geist Sans / Narrative channel</p>
+          <h3>The bicycle detection fails at 11 px.</h3>
+          <p>Use Sans for the finding, context, guidance, and product interface. Keep long-form lines between roughly 55 and 80 characters.</p>
+        </div>
+        <div class="code-panel">
+          <p class="micro" style="color: var(--signal); margin-bottom: 20px;">Geist Mono / Evidence channel</p>
+          <pre>$ cvfuzz run street.mp4
+
+transform  motion_blur
+object     bicycle #04
+<mark>boundary   kernel = 11 px</mark>
+status     confidence_collapse</pre>
+        </div>
+      </div>
+      <p class="body-copy" style="margin-top: 18px;">Use Geist Mono for parameters, commands, seeds, paths, model identifiers, and reproducibility metadata. Never set narrative paragraphs entirely in monospace.</p>
+    </div>
+    <div class="page-footer"><span>Sans explains. Mono proves.</span><span>Typography / Hierarchy</span></div>
+  </section>
+
+  <!-- 15 / Voice -->
+  <section class="page light">
+    <div class="page-header"><span>05 / Voice</span><span>CVFuzz / Brand Guidelines / 15</span></div>
+    <div class="page-pad" style="padding-top: 0.93in;">
+      <p class="eyebrow">Verbal identity</p>
+      <h2 class="display-md">Say what happened. Then prove it.</h2>
+      <div class="voice-flow"><span>Observation</span><span class="arrow">-></span><span>Boundary</span><span class="arrow">-></span><span>Reproduction</span></div>
+      <p class="lede" style="margin-top: 22px;">The bicycle detection fails at a motion-blur kernel of 11 px. Reproduce it with the saved configuration and seed.</p>
+      <div class="language-columns">
+        <div class="language-box"><h3>Use</h3><p>Probe. Boundary. Evidence. Reproduce. Compare. Stability. Minimum breaking change.</p></div>
+        <div class="language-box dark-box"><h3 class="avoid">Avoid</h3><p>Unbreakable. AI-proof. Perfect. Guaranteed safety. The smartest tester.</p></div>
+      </div>
+    </div>
+    <div class="page-footer"><span>Direct, exact, calm</span><span>Voice / Messaging</span></div>
+  </section>
+
+  <!-- 16 / Graphic language -->
+  <section class="page dark">
+    <div class="page-header"><span>06 / Graphic language</span><span>CVFuzz / Brand Guidelines / 16</span></div>
+    <div class="page-pad" style="padding-top: 0.93in;">
+      <p class="eyebrow">Visual grammar</p>
+      <h2 class="display-md">One deliberate break.</h2>
+      <p class="lede" style="margin: 13px 0 24px;">Keep the field orderly. Introduce one precise offset, fracture, scan, or trail.</p>
+      <div class="grammar-stage">
+        <div class="grammar-frame"></div>
+        <div class="grammar-note"><p class="eyebrow">System rule</p><p>Use detection geometry as structure. Let disruption appear only where the threshold is found. Never decorate with random glitch.</p></div>
+        <span class="micro" style="position: absolute; left: 1.15in; bottom: 0.45in; color: var(--steel);">Stable field</span>
+        <span class="micro" style="position: absolute; left: 5.05in; bottom: 0.45in; color: var(--signal);">Boundary trail</span>
+      </div>
+    </div>
+    <div class="page-footer"><span>Order -> break -> evidence</span><span>Graphic language</span></div>
+  </section>
+
+  <!-- 17 / Sensor divider -->
+  <section class="page image-page" style="background-image: url('assets/cvfuzz-divider-sensor-noise.png'); background-position: center;">
+    <div class="divider-copy">
+      <p class="eyebrow">Transformation 03 / Low light</p>
+      <h2 class="display-lg">Signal becomes noise.</h2>
+      <p class="lede" style="margin-top: 20px;">Texture is meaningful when it expresses a real transformation and a readable transition.</p>
+    </div>
+    <div class="divider-index">Section divider / Imagery</div>
+    <div class="page-footer no-rule"><span>Scientific atmosphere</span><span>17</span></div>
+  </section>
+
+  <!-- 18 / Imagery -->
+  <section class="page light">
+    <div class="page-header"><span>07 / Imagery</span><span>CVFuzz / Brand Guidelines / 18</span></div>
+    <div class="page-pad" style="padding-top: 0.9in;">
+      <div class="split" style="align-items: end; margin-bottom: 20px;"><div><p class="eyebrow">Art direction</p><h2 class="display-md">Evidence, made cinematic.</h2></div><p class="body-copy">Deep blacks, realistic transformations, restrained overlays, and one Signal Lime focal point.</p></div>
+      <div class="image-grid">
+        <figure class="image-tile"><img src="assets/cvfuzz-workstation-mockup.png" alt="CVFuzz product workstation concept"><figcaption>Product in context</figcaption></figure>
+        <figure class="image-tile"><img src="assets/cvfuzz-divider-fog.png" alt="Fog transformation concept"><figcaption>Visibility loss</figcaption></figure>
+        <figure class="image-tile"><img src="assets/cvfuzz-divider-motion-blur.png" alt="Motion blur transformation concept"><figcaption>Measured motion</figcaption></figure>
+        <figure class="image-tile"><img src="assets/cvfuzz-divider-occlusion.png" alt="Occlusion transformation concept"><figcaption>Target-aware occlusion</figcaption></figure>
+        <figure class="image-tile"><img src="assets/cvfuzz-divider-sensor-noise.png" alt="Sensor noise transformation concept"><figcaption>Signal threshold</figcaption></figure>
+      </div>
+    </div>
+    <div class="page-footer"><span>Transformation-led, never generic AI imagery</span><span>Imagery / Direction</span></div>
+  </section>
+
+  <!-- 19 / Occlusion divider -->
+  <section class="page image-page" style="background-image: url('assets/cvfuzz-divider-occlusion.png'); background-position: center;">
+    <div class="divider-copy" style="left: auto; right: 0.72in; width: 4.75in;">
+      <p class="eyebrow">Transformation 04 / Occlusion</p>
+      <h2 class="display-lg">Hide less. Learn more.</h2>
+      <p class="lede" style="margin-top: 20px;">Every application image should reveal how the test is controlled, not merely that something failed.</p>
+    </div>
+    <div class="divider-index">Section divider / Applications</div>
+    <div class="page-footer no-rule"><span>Target-aware testing</span><span>19</span></div>
+  </section>
+
+  <!-- 20 / Application -->
+  <section class="page application-page dark">
+    <div class="application-image" aria-hidden="true"></div>
+    <div class="application-copy">
+      <p class="eyebrow">Application / Platform</p>
+      <h2 class="display-lg">The interface is the evidence.</h2>
+      <p class="lede" style="margin-top: 22px;">Frames, detections, parameter sweeps, and failure boundaries carry the identity. The logo appears once; the work stays central.</p>
+      <div class="brand-plate"><img src="../../frontend/public/brand/cvfuzz-logo.png" alt="CVFuzz on approved Paper plate"></div>
+      <p class="micro" style="margin-top: 14px; color: var(--steel);">Conceptual application mockup / not final UI</p>
+    </div>
+    <div class="page-footer no-rule" style="z-index: 4;"><span>Product in context</span><span>20</span></div>
+  </section>
+
+  <!-- 21 / Data expression -->
+  <section class="page light">
+    <div class="page-header"><span>08 / Product expression</span><span>CVFuzz / Brand Guidelines / 21</span></div>
+    <div class="page-pad" style="padding-top: 0.93in;">
+      <div class="split" style="align-items: end; margin-bottom: 22px;"><div><p class="eyebrow">Data and interface</p><h2 class="display-md">Show the boundary, not the brand.</h2></div><p class="body-copy">Brand elements frame the result. They never compete with model evidence.</p></div>
+      <div class="data-layout">
+        <div class="data-chart"><div class="chart-line"></div><div class="chart-boundary"><span>Minimum breaking change</span></div><span class="micro" style="position: absolute; left: 24px; bottom: 20px; color: var(--steel);">Transformation severity -></span></div>
+        <div class="data-principles">
+          <div class="data-principle"><strong>Baseline first</strong><span>Always show the stable reference before the changed condition.</span></div>
+          <div class="data-principle"><strong>Boundary second</strong><span>Make the minimum breaking parameter easy to locate and compare.</span></div>
+          <div class="data-principle"><strong>Reproduction always</strong><span>Expose enough model, config, seed, and input context to rerun the result.</span></div>
+          <div class="data-principle"><strong>Semantic colors stay separate</strong><span>Signal Lime cannot mean success, warning, error, and information at once.</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="page-footer"><span>Baseline -> condition -> boundary -> reproduction</span><span>Product / Data expression</span></div>
+  </section>
+
+  <!-- 22 / Boundary divider -->
+  <section class="page image-page" style="background-image: url('assets/cvfuzz-boundary-cover.png'); background-position: center;">
+    <div class="divider-copy">
+      <p class="eyebrow">From identity to product</p>
+      <h2 class="display-lg">Stable DNA.<br>Flexible system.</h2>
+      <p class="lede" style="margin-top: 20px;">The brand defines the signal. The future design system defines how that signal behaves at scale.</p>
+    </div>
+    <div class="divider-index">Section divider / Design system</div>
+    <div class="page-footer no-rule"><span>Brand foundation</span><span>22</span></div>
+  </section>
+
+  <!-- 23 / Design system bridge -->
+  <section class="page light">
+    <div class="page-header"><span>09 / Product system</span><span>CVFuzz / Brand Guidelines / 23</span></div>
+    <div class="page-pad" style="padding-top: 0.93in;">
+      <p class="eyebrow">Brand -> Design system</p>
+      <h2 class="display-md">Build from stable DNA.</h2>
+      <p class="body-copy" style="margin-top: 12px; max-width: 8.3in;">The brand layer remains recognizable while product tokens, components, and interaction patterns evolve around real platform needs.</p>
+      <div class="system-flow">
+        <article class="system-step"><span class="card-number">01</span><h3>Brand DNA</h3><ul><li>Purpose</li><li>Logo</li><li>Core color</li><li>Voice</li></ul></article>
+        <article class="system-step"><span class="card-number">02</span><h3>Tokens</h3><ul><li>Typography</li><li>Spacing</li><li>Surfaces</li><li>Motion</li></ul></article>
+        <article class="system-step"><span class="card-number">03</span><h3>Components</h3><ul><li>Controls</li><li>Navigation</li><li>Data</li><li>States</li></ul></article>
+        <article class="system-step"><span class="card-number">04</span><h3>Platform</h3><ul><li>Runs</li><li>Reports</li><li>Compare</li><li>Share</li></ul></article>
+      </div>
+    </div>
+    <div class="page-footer"><span>Brand decisions are inputs, not component specifications</span><span>Design system / Bridge</span></div>
+  </section>
+
+  <!-- 24 / Roadmap -->
+  <section class="page dark">
+    <div class="page-header"><span>10 / Evolution</span><span>CVFuzz / Brand Guidelines / 24</span></div>
+    <div class="page-pad" style="padding-top: 0.96in;">
+      <p class="eyebrow">Asset roadmap</p>
+      <h2 class="display-md">Grow one system, not many.</h2>
+      <div class="roadmap">
+        <div class="roadmap-column"><span class="phase">Now</span><h3>Foundation</h3><ol><li>Approved master lockup</li><li>Editable HTML brand book</li><li>Core color system</li><li>Voice and imagery</li></ol></div>
+        <div class="roadmap-column"><span class="phase" style="color: var(--steel);">Next</span><h3>Production set</h3><ol><li>Redrawn vector master</li><li>Approved reverse lockup</li><li>Monochrome versions</li><li>Symbol and favicon family</li></ol></div>
+        <div class="roadmap-column"><span class="phase" style="color: var(--steel);">Later</span><h3>Product system</h3><ol><li>Semantic UI tokens</li><li>Component library</li><li>Data palette</li><li>Motion language</li></ol></div>
+      </div>
+      <p class="body-copy" style="margin-top: 28px; max-width: 8.2in;">Do not auto-trace the PNG and call it final. Production variants must be redrawn cleanly, compared against the approved master, and released as one coordinated family.</p>
+    </div>
+    <div class="page-footer"><span>Governance protects coherence</span><span>Evolution / Roadmap</span></div>
+  </section>
+
+  <!-- 25 / Closing -->
+  <section class="page closing-page">
+    <div class="closing-content">
+      <div class="brand-plate"><img src="../../frontend/public/brand/cvfuzz-logo.png" alt="CVFuzz"></div>
+      <p class="eyebrow">Brand essence</p>
+      <h2 class="display-lg">Controlled distortion.<br>Clear evidence.</h2>
+      <p class="lede">Find what breaks. Know exactly where. Make every result reproducible.</p>
+      <p class="small-caps" style="margin-top: 0.55in;">Version 1.0 / August 2026</p>
+    </div>
+    <div class="page-footer no-rule" style="z-index: 3;"><span>CVFuzz Brand Guidelines</span><span>25</span></div>
+  </section>
+</body>
+</html>

@@ -7,6 +7,9 @@ they are documented separately.
 **Professional visual edition:**
 [`CVFuzz_Brand_Guidelines.pdf`](../../output/pdf/CVFuzz_Brand_Guidelines.pdf)
 
+**Editable publication source:**
+[`CVFuzz_Brand_Guidelines.html`](CVFuzz_Brand_Guidelines.html)
+
 <p align="center">
   <img src="../../frontend/public/brand/cvfuzz-logo.png" alt="CVFuzz logo" width="720">
 </p>
