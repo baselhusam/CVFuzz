@@ -29,9 +29,11 @@ source .venv/bin/activate
 cvfuzz serve
 ```
 
-The API listens on `http://127.0.0.1:8000` and stores uploaded models, source videos, run state,
+The API loads `CVFUZZ_API_HOST` and `CVFUZZ_API_PORT` from `backend/.env`; the tracked defaults
+listen on `http://127.0.0.1:8020`. The `--host` and `--port` command options take precedence.
+It stores uploaded models, source videos, run state,
 metrics, and generated videos under `.cvfuzz/web-runs/`. API documentation is available at
-`http://127.0.0.1:8000/docs`.
+`http://127.0.0.1:8020/docs`.
 
 The main endpoints are `POST /v1/runs`, `GET /v1/runs`, `GET /v1/runs/{id}`, and the artifact
 route returned in each completed run.

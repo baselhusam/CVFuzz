@@ -5,7 +5,7 @@ export type RunProgress = {
   label: string
 }
 
-const API_URL = (process.env.NEXT_PUBLIC_CVFUZZ_API_URL || "http://localhost:8000").replace(
+const API_URL = (process.env.NEXT_PUBLIC_CVFUZZ_API_URL || "http://127.0.0.1:8020").replace(
   /\/$/,
   "",
 )

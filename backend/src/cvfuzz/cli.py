@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -9,6 +10,7 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
+from dotenv import load_dotenv
 from rich.console import Console
 from rich.table import Table
 
@@ -23,6 +25,24 @@ from cvfuzz.video_storage import VideoRunStore, read_run
 
 app = typer.Typer(no_args_is_help=True, help="Find failure boundaries in computer vision models.")
 console = Console()
+
+_BACKEND_ROOT = Path(__file__).resolve().parents[2]
+load_dotenv(_BACKEND_ROOT / ".env", override=False)
+
+
+def _api_host() -> str:
+    return os.getenv("CVFUZZ_API_HOST", "127.0.0.1")
+
+
+def _api_port() -> int:
+    value = os.getenv("CVFUZZ_API_PORT", "8000")
+    try:
+        port = int(value)
+    except ValueError as exc:
+        raise CVFuzzError("CVFUZZ_API_PORT must be an integer") from exc
+    if not 1 <= port <= 65535:
+        raise CVFuzzError("CVFUZZ_API_PORT must be between 1 and 65535")
+    return port
 
 
 @contextmanager
@@ -173,8 +193,14 @@ def inspect_video_command(
 
 @app.command("serve")
 def serve_command(
-    host: Annotated[str, typer.Option(help="HTTP bind address")] = "127.0.0.1",
-    port: Annotated[int, typer.Option(help="HTTP port")] = 8000,
+    host: Annotated[
+        str | None,
+        typer.Option(help="HTTP bind address (defaults to CVFUZZ_API_HOST)"),
+    ] = None,
+    port: Annotated[
+        int | None,
+        typer.Option(help="HTTP port (defaults to CVFUZZ_API_PORT)"),
+    ] = None,
     reload: Annotated[bool, typer.Option(help="Reload when Python files change")] = False,
 ) -> None:
     """Start the local CVFuzz web API."""
@@ -182,7 +208,12 @@ def serve_command(
         import uvicorn
     except ImportError as exc:
         raise CVFuzzError("API dependencies are not installed") from exc
-    uvicorn.run("cvfuzz.api:app", host=host, port=port, reload=reload)
+    uvicorn.run(
+        "cvfuzz.api:app",
+        host=host or _api_host(),
+        port=port if port is not None else _api_port(),
+        reload=reload,
+    )
 
 
 def main() -> None:

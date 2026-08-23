@@ -128,10 +128,13 @@ Then start the frontend in another terminal:
 
 ```bash
 cd frontend
-cp .env.example .env.local
 npm install
 npm run dev
 ```
+
+The tracked local defaults use `http://127.0.0.1:8020` for the API and
+`http://localhost:3010` for the frontend, avoiding the commonly occupied ports 8000 and 3000.
+Edit `backend/.env` and `frontend/.env` together when choosing a different backend port.
 
 ## YAML transformation configuration
 

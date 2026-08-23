@@ -21,17 +21,27 @@ Start the frontend in another:
 
 ```bash
 cd frontend
-cp .env.example .env.local
 npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`. Runs are stored by the API under
+Open `http://localhost:3010`. Runs are stored by the API under
 `backend/.cvfuzz/web-runs/` and reappear in the left sidebar after a restart.
+
+`frontend/.env` controls both connections:
+
+```dotenv
+PORT=3010
+NEXT_PUBLIC_CVFUZZ_API_URL=http://127.0.0.1:8020
+```
+
+The startup wrapper loads `PORT` before invoking Next.js, because Next.js cannot use a `PORT`
+declared in `.env` by itself. `NEXT_PUBLIC_CVFUZZ_API_URL` is intentionally browser-visible;
+do not put secrets in variables with the `NEXT_PUBLIC_` prefix.
 
 ## API usage
 
-`NEXT_PUBLIC_CVFUZZ_API_URL` defaults to `http://localhost:8000`. The browser uses:
+`NEXT_PUBLIC_CVFUZZ_API_URL` defaults to `http://127.0.0.1:8020`. The browser uses:
 
 - `GET /v1/config` for the enabled full-video transform parameters.
 - `POST /v1/runs` for multipart model and video upload.
