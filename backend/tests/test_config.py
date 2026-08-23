@@ -18,6 +18,7 @@ def test_default_config_loads_and_expands_variants() -> None:
     assert len(series) == 3
     assert [level["kernel_size"] for level in series[0]] == [3, 5, 7, 9, 11, 15, 21]
     assert {variant[0]["angle_degrees"] for variant in series} == {0, 45, 90}
+    assert motion_blur.video_parameters() == {"kernel_size": 11, "angle_degrees": 45}
 
 
 def test_parameter_range_is_inclusive_and_keeps_order(tmp_path: Path) -> None:
@@ -76,4 +77,23 @@ transforms:
     )
 
     with pytest.raises(ConfigurationError, match="baseline_confidnce"):
+        load_config(path)
+
+
+def test_unknown_render_parameter_is_rejected(tmp_path: Path) -> None:
+    path = tmp_path / "config.yaml"
+    path.write_text(
+        """
+version: 1
+transforms:
+  exposure:
+    search_parameter: stops
+    render_parameters: {strength: 0.5}
+    parameters:
+      stops: {values: [-1.0]}
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigurationError, match="render_parameters"):
         load_config(path)

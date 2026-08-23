@@ -18,6 +18,8 @@ from cvfuzz.models import UltralyticsDetector
 from cvfuzz.runner import FuzzRunner
 from cvfuzz.storage import load_summary
 from cvfuzz.transforms import list_transforms
+from cvfuzz.video_runner import VideoEvaluationRunner
+from cvfuzz.video_storage import VideoRunStore, read_run
 
 app = typer.Typer(no_args_is_help=True, help="Find failure boundaries in computer vision models.")
 console = Console()
@@ -99,6 +101,35 @@ def run_command(
     console.print(f"Completed. Results: [bold]{path}[/bold]")
 
 
+@app.command("video-run")
+def video_run_command(
+    model: Annotated[Path, typer.Argument(help="Path to an Ultralytics-compatible model")],
+    source: Annotated[Path, typer.Argument(help="Full-length video path")],
+    config: Annotated[
+        Path | None, typer.Option("--config", "-c", help="YAML configuration")
+    ] = None,
+    device: Annotated[
+        str | None, typer.Option(help="Inference device, such as cpu, 0, or mps")
+    ] = None,
+) -> None:
+    """Render an annotated original plus one evaluated video per enabled transform."""
+    loaded = _load(config)
+    store = VideoRunStore(
+        loaded.run.output_dir,
+        model_name=model.name,
+        source_name=source.name,
+    )
+    store.write_yaml("config.yaml", loaded.raw)
+    try:
+        detector = UltralyticsDetector(model, device=device)
+        path = VideoEvaluationRunner(detector, loaded, store).run(source)
+    except Exception as exc:
+        if store.read_manifest().get("status") != "failed":
+            store.fail(str(exc))
+        raise
+    console.print(f"Completed full-stream run. Results: [bold]{path}[/bold]")
+
+
 @app.command("inspect")
 def inspect_command(
     run_directory: Annotated[Path, typer.Argument(help="CVFuzz run directory")],
@@ -121,6 +152,37 @@ def inspect_command(
         console.print(
             "Failures by transform:", json.dumps(summary["failures_by_transform"], indent=2)
         )
+
+
+@app.command("inspect-video")
+def inspect_video_command(
+    run_directory: Annotated[Path, typer.Argument(help="CVFuzz video run directory")],
+) -> None:
+    """Show status and metrics for a full-stream video run."""
+    run = read_run(run_directory)
+    metrics = run.get("metrics") or {}
+    table = Table(title=f"CVFuzz video run {run.get('id', '')}")
+    table.add_column("Metric")
+    table.add_column("Value", justify="right")
+    for key in ("status", "progress", "stage"):
+        table.add_row(key.replace("_", " ").title(), str(run.get(key, "-")))
+    for key in ("frames_analyzed", "robustness_score", "total_failures", "duration_seconds"):
+        table.add_row(key.replace("_", " ").title(), str(metrics.get(key, "-")))
+    console.print(table)
+
+
+@app.command("serve")
+def serve_command(
+    host: Annotated[str, typer.Option(help="HTTP bind address")] = "127.0.0.1",
+    port: Annotated[int, typer.Option(help="HTTP port")] = 8000,
+    reload: Annotated[bool, typer.Option(help="Reload when Python files change")] = False,
+) -> None:
+    """Start the local CVFuzz web API."""
+    try:
+        import uvicorn
+    except ImportError as exc:
+        raise CVFuzzError("API dependencies are not installed") from exc
+    uvicorn.run("cvfuzz.api:app", host=host, port=port, reload=reload)
 
 
 def main() -> None:

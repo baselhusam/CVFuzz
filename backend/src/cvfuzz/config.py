@@ -51,6 +51,7 @@ class TransformConfig:
     parameters: dict[str, ParameterSpec]
     target_aware: bool = False
     identity_value: Any | None = None
+    render_parameters: dict[str, Any] = field(default_factory=dict)
 
     def series(self) -> Iterable[list[dict[str, Any]]]:
         """Yield ordered search series, one per combination of variant parameters."""
@@ -68,6 +69,11 @@ class TransformConfig:
             return None
         fixed = {key: value for key, value in levels[0].items() if key != self.search_parameter}
         return {**fixed, self.search_parameter: self.identity_value}
+
+    def video_parameters(self) -> dict[str, Any]:
+        """Return the configured severity used for the full-length rendered video."""
+        defaults = {name: spec.values[0] for name, spec in self.parameters.items()}
+        return {**defaults, **self.render_parameters}
 
 
 @dataclass(frozen=True, slots=True)
@@ -253,7 +259,14 @@ def load_config(path: str | Path) -> CVFuzzConfig:
             raise ConfigurationError(f"{path_prefix} must be a mapping")
         _reject_unknown(
             item,
-            {"enabled", "search_parameter", "identity_value", "target_aware", "parameters"},
+            {
+                "enabled",
+                "search_parameter",
+                "identity_value",
+                "target_aware",
+                "parameters",
+                "render_parameters",
+            },
             path_prefix,
         )
         search_parameter = item.get("search_parameter")
@@ -266,6 +279,15 @@ def load_config(path: str | Path) -> CVFuzzConfig:
         }
         if search_parameter not in parameters:
             raise ConfigurationError(f"{path_prefix}.search_parameter is not in parameters")
+        render_parameters = item.get("render_parameters", {})
+        if not isinstance(render_parameters, dict):
+            raise ConfigurationError(f"{path_prefix}.render_parameters must be a mapping")
+        unknown_render_parameters = sorted(set(render_parameters) - set(parameters))
+        if unknown_render_parameters:
+            raise ConfigurationError(
+                f"Unknown {path_prefix}.render_parameters option(s): "
+                f"{', '.join(unknown_render_parameters)}"
+            )
         transforms.append(
             TransformConfig(
                 name=name,
@@ -276,6 +298,7 @@ def load_config(path: str | Path) -> CVFuzzConfig:
                     item.get("target_aware", False), f"{path_prefix}.target_aware"
                 ),
                 identity_value=item.get("identity_value"),
+                render_parameters=render_parameters,
             )
         )
 
