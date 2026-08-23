@@ -79,6 +79,16 @@ transforms:
     assert run["metrics"]["transforms"][0]["id"] == "exposure"
     assert {artifact["id"] for artifact in run["artifacts"]} == {"original", "exposure"}
     assert all((run_path / artifact["path"]).is_file() for artifact in run["artifacts"])
+    assert (run_path / "augmented" / "exposure.mp4").is_file()
+    assert (run_path / "baseline.jsonl").is_file()
     assert len((run_path / "frames.jsonl").read_text(encoding="utf-8").splitlines()) == 3
+    stages = [
+        json.loads(line)["stage"]
+        for line in (run_path / "events.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    assert "Creating augmentation 1 of 1: Exposure" in stages
+    assert "Evaluating video 1 of 2: Original" in stages
+    assert "Evaluating video 2 of 2: Exposure" in stages
+    assert not any("Processed frame" in stage for stage in stages)
     assert list_runs(config.run.output_dir)[0]["id"] == store.run_id
     json.loads((run_path / "metrics.json").read_text(encoding="utf-8"))

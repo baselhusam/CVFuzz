@@ -19,11 +19,14 @@ class VideoRunStore:
         self.run_id = f"{timestamp}-{uuid.uuid4().hex[:8]}"
         self.path = Path(root).expanduser().resolve() / self.run_id
         self.inputs_path = self.path / "inputs"
+        self.augmented_path = self.path / "augmented"
         self.artifacts_path = self.path / "artifacts"
         self.path.mkdir(parents=True, exist_ok=False)
         self.inputs_path.mkdir()
+        self.augmented_path.mkdir()
         self.artifacts_path.mkdir()
         self.frames_path = self.path / "frames.jsonl"
+        self.references_path = self.path / "baseline.jsonl"
         self.events_path = self.path / "events.jsonl"
         self._started_at = datetime.now(UTC)
         self.write_manifest(
@@ -45,8 +48,10 @@ class VideoRunStore:
         instance.path = Path(path).expanduser().resolve()
         instance.run_id = instance.path.name
         instance.inputs_path = instance.path / "inputs"
+        instance.augmented_path = instance.path / "augmented"
         instance.artifacts_path = instance.path / "artifacts"
         instance.frames_path = instance.path / "frames.jsonl"
+        instance.references_path = instance.path / "baseline.jsonl"
         instance.events_path = instance.path / "events.jsonl"
         manifest = instance.read_manifest()
         instance._started_at = datetime.fromisoformat(manifest["started_at"])
@@ -96,6 +101,17 @@ class VideoRunStore:
 
     def append_frame(self, data: dict[str, Any]) -> None:
         with self.frames_path.open("a", encoding="utf-8") as stream:
+            stream.write(json.dumps(data, default=_json_default) + "\n")
+
+    def write_frames(self, records: list[dict[str, Any]]) -> None:
+        temporary = self.frames_path.with_suffix(".jsonl.tmp")
+        with temporary.open("w", encoding="utf-8") as stream:
+            for record in records:
+                stream.write(json.dumps(record, default=_json_default) + "\n")
+        temporary.replace(self.frames_path)
+
+    def append_baseline(self, data: dict[str, Any]) -> None:
+        with self.references_path.open("a", encoding="utf-8") as stream:
             stream.write(json.dumps(data, default=_json_default) + "\n")
 
     def append_event(self, data: dict[str, Any]) -> None:

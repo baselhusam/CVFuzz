@@ -57,6 +57,12 @@ export type RunRecord = {
   status: RunStatus
   progress: number
   stage: string
+  phase?: "preparing" | "rendering" | "evaluation"
+  stage_index?: number
+  stage_total?: number
+  phase_stage_index?: number
+  phase_stage_total?: number
+  stage_progress?: number
   started_at: string
   finished_at?: string
   error?: string

@@ -351,6 +351,10 @@ function VideoWall({ run }: { run: RunRecord }) {
 
 function ActiveRun({ run }: { run: RunRecord }) {
   if (run.status === "completed" && run.metrics) return <><VideoWall run={run} /><MetricsPanel metrics={run.metrics} /></>
+  const stageCounter = run.stage_index && run.stage_total
+    ? `STAGE ${run.stage_index} OF ${run.stage_total}`
+    : "FULL-STREAM PROCESSING"
+  const stageProgress = run.stage_progress ?? run.progress
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-3xl items-center justify-center py-16">
       <div className="w-full border border-border bg-card p-8 text-center md:p-12">
@@ -358,7 +362,7 @@ function ActiveRun({ run }: { run: RunRecord }) {
         <p className="mt-5 section-kicker">RUN {run.id.slice(-8).toUpperCase()}</p>
         <h1 className="mt-3 text-3xl font-semibold">{run.status === "failed" ? "Run failed" : run.stage}</h1>
         <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-muted-foreground">{run.error || `${run.model.name} × ${run.source.name}`}</p>
-        {run.status !== "failed" && <div className="mx-auto mt-8 max-w-xl"><div className="mb-2 flex justify-between font-mono text-[9px] text-muted-foreground"><span>FULL-STREAM PROCESSING</span><span>{run.progress}%</span></div><div className="h-1 bg-muted"><motion.div className="h-full bg-signal" animate={{ width: `${run.progress}%` }} /></div></div>}
+        {run.status !== "failed" && <div className="mx-auto mt-8 max-w-xl"><div className="mb-2 flex justify-between font-mono text-[9px] text-muted-foreground"><span>{stageCounter}</span><span>{stageProgress}%</span></div><div className="h-1 bg-muted"><motion.div className="h-full bg-signal" animate={{ width: `${stageProgress}%` }} /></div></div>}
       </div>
     </div>
   )

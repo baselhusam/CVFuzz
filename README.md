@@ -3,9 +3,9 @@
 **Find what breaks your computer vision model automatically.**
 
 CVFuzz is a local-first robustness testing tool for computer vision models. Its primary web
-workflow takes one model and one video, creates one full-length video per configured
-augmentation, applies the model to the original and every transformed frame, and exposes the
-playable outputs plus robustness metrics as persistent runs.
+workflow takes one model and one video, first creates one full-length video per configured
+augmentation, then evaluates the original and each transformed video as separate stages. It
+exposes playable outputs plus robustness metrics as persistent runs.
 
 The original CLI boundary-search workflow remains available for finding the smallest change
 that destabilizes a specific object.
@@ -54,13 +54,10 @@ The initial transformation set includes:
 model + video
         │
         ▼
-baseline inference on every frame
+render 9 complete augmentation videos
         │
         ▼
-9 configured frame transformations
-        │
-        ▼
-9 transformed inference passes per frame
+evaluate original video, then each augmentation video
         │
         ▼
 annotated original + augmented MP4s
@@ -178,6 +175,7 @@ CVFuzz stores each run in a self-contained directory:
 ```text
 .cvfuzz/web-runs/<run-id>/
 ├── inputs/
+├── augmented/
 ├── artifacts/
 │   ├── original.mp4
 │   ├── exposure.mp4
@@ -185,6 +183,7 @@ CVFuzz stores each run in a self-contained directory:
 ├── config.yaml
 ├── manifest.json
 ├── events.jsonl
+├── baseline.jsonl
 ├── frames.jsonl
 ├── metrics.json
 └── artifacts.json

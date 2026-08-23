@@ -51,8 +51,9 @@ cvfuzz video-run /path/to/model.pt /path/to/video.mp4 --config cvfuzz.yaml
 cvfuzz inspect-video .cvfuzz/runs/<run-id>
 ```
 
-`run` retains the object-level boundary-search behavior. `video-run` processes every decoded
-frame and creates the same artifacts used by the web application.
+`run` retains the object-level boundary-search behavior. `video-run` first renders each full
+augmentation video, then evaluates the original and each completed augmentation stream. It
+creates the same artifacts used by the web application.
 
 ## Configuration model
 
@@ -103,6 +104,9 @@ motion_blur:
 ├── inputs/
 │   ├── model.pt
 │   └── source.mp4
+├── augmented/
+│   ├── exposure.mp4
+│   └── ... raw, full-length augmentation intermediates
 ├── artifacts/
 │   ├── original.mp4
 │   ├── exposure.mp4
@@ -110,11 +114,15 @@ motion_blur:
 ├── manifest.json
 ├── config.yaml
 ├── events.jsonl
+├── baseline.jsonl
 ├── frames.jsonl
 ├── metrics.json
 └── artifacts.json
 ```
 
-Detection overlays are baked into every output. When `ffmpeg` is available, CVFuzz finalizes
-the videos as H.264/yuv420p with fast-start metadata for reliable browser playback. OpenCV's
-MP4 writer is used as a local fallback.
+The run first creates raw videos under `augmented/`, one at a time. It then evaluates the source
+and each generated stream, producing annotated browser-facing videos in `artifacts/`. A baseline
+reference index is persisted in `baseline.jsonl` so target-aware augmentations and later
+evaluation stages use the same original-frame detections. When `ffmpeg` is available, CVFuzz
+finalizes the videos as H.264/yuv420p with fast-start metadata for reliable browser playback.
+OpenCV's MP4 writer is used as a local fallback.
