@@ -66,7 +66,14 @@ export type RunRecord = {
   started_at: string
   finished_at?: string
   error?: string
-  model: { name?: string; adapter?: string; path?: string; device?: string }
+  model: {
+    name?: string
+    adapter?: string
+    path?: string
+    device?: string
+    requested_device?: string
+    accelerator?: string
+  }
   source: {
     name?: string
     fps?: number
@@ -97,6 +104,13 @@ export type TransformConfig = {
   enabled: boolean
   parameters: Record<string, unknown>
   target_aware: boolean
+}
+
+export type InferenceDevice = {
+  id: "auto" | "mps" | "cpu"
+  name: string
+  description: string
+  available: boolean
 }
 
 export const formatBytes = (bytes: number) => {

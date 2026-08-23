@@ -98,3 +98,23 @@ def test_api_rejects_unsupported_model(tmp_path: Path) -> None:
             },
         )
     assert response.status_code == 400
+
+
+def test_api_rejects_unavailable_mps_request(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr("cvfuzz.models.ultralytics._mps_available", lambda: False)
+    app = create_app(
+        runs_root=tmp_path / "runs",
+        config_path=Path(__file__).parents[1] / "configs" / "smoke.yaml",
+    )
+    with TestClient(app) as client:
+        response = client.post(
+            "/v1/runs",
+            data={"device": "mps"},
+            files={
+                "model": ("model.pt", b"weights", "application/octet-stream"),
+                "video": ("source.mp4", b"video", "video/mp4"),
+            },
+        )
+
+    assert response.status_code == 400
+    assert "MPS" in response.json()["detail"]

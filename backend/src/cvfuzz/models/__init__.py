@@ -1,4 +1,8 @@
 from cvfuzz.models.base import Detector
-from cvfuzz.models.ultralytics import UltralyticsDetector
+from cvfuzz.models.ultralytics import (
+    UltralyticsDetector,
+    device_capabilities,
+    resolve_device,
+)
 
-__all__ = ["Detector", "UltralyticsDetector"]
+__all__ = ["Detector", "UltralyticsDetector", "device_capabilities", "resolve_device"]

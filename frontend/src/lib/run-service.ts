@@ -1,4 +1,9 @@
-import type { RunRecord, RunSummary, TransformConfig } from "@/lib/run-data"
+import type {
+  InferenceDevice,
+  RunRecord,
+  RunSummary,
+  TransformConfig,
+} from "@/lib/run-data"
 
 export type RunProgress = {
   progress: number
@@ -50,13 +55,18 @@ export async function getRun(id: string) {
 }
 
 export async function getTransformConfig() {
-  const payload = await request<{ version: number; transforms: TransformConfig[] }>("/v1/config")
-  return payload.transforms
+  return request<{
+    version: number
+    transforms: TransformConfig[]
+    default_device: InferenceDevice["id"]
+    devices: InferenceDevice[]
+  }>("/v1/config")
 }
 
 type RunSubmission = {
   model: File
   video: File
+  device: InferenceDevice["id"]
   onProgress: (progress: RunProgress) => void
   onAccepted?: (run: RunRecord) => void
   onUpdate?: (run: RunRecord) => void
@@ -67,6 +77,7 @@ const wait = (duration: number) => new Promise((resolve) => window.setTimeout(re
 export async function submitRun({
   model,
   video,
+  device,
   onProgress,
   onAccepted,
   onUpdate,
@@ -75,6 +86,7 @@ export async function submitRun({
   const body = new FormData()
   body.append("model", model)
   body.append("video", video)
+  body.append("device", device)
   const accepted = await request<{ id: string }>("/v1/runs", { method: "POST", body })
   let run = await getRun(accepted.id)
   onAccepted?.(run)

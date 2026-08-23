@@ -32,6 +32,7 @@ import {
   type RunArtifact,
   type RunRecord,
   type RunSummary,
+  type InferenceDevice,
   type TransformConfig,
   type TransformMetrics,
 } from "@/lib/run-data"
@@ -172,9 +173,12 @@ function RunsSidebar({
 function RunSetup({
   model,
   video,
+  devices,
+  device,
   transforms,
   onModel,
   onVideo,
+  onDevice,
   onRun,
   running,
   progress,
@@ -183,9 +187,12 @@ function RunSetup({
 }: {
   model: File | null
   video: File | null
+  devices: InferenceDevice[]
+  device: InferenceDevice["id"]
   transforms: TransformConfig[]
   onModel: (file: File | null) => void
   onVideo: (file: File | null) => void
+  onDevice: (device: InferenceDevice["id"]) => void
   onRun: () => void
   running: boolean
   progress: number
@@ -226,6 +233,24 @@ function RunSetup({
             ))}
             {!enabled.length && <span className="text-xs text-muted-foreground">Connect the API to load the configured techniques.</span>}
           </div>
+        </div>
+        <div className="flex flex-col gap-2 border-t border-border p-4 md:flex-row md:items-center md:justify-between md:p-5">
+          <div>
+            <p className="font-mono text-[9px] tracking-[0.15em] text-muted-foreground">INFERENCE DEVICE</p>
+            <p className="mt-1 text-xs text-muted-foreground">Apple GPU is used automatically when MPS is available.</p>
+          </div>
+          <select
+            value={device}
+            onChange={(event) => onDevice(event.target.value as InferenceDevice["id"])}
+            className="h-10 border border-border bg-background px-3 text-xs font-medium outline-none focus:border-signal"
+            aria-label="Inference device"
+          >
+            {devices.map((option) => (
+              <option key={option.id} value={option.id} disabled={!option.available}>
+                {option.name} — {option.description}{!option.available ? " (unavailable)" : ""}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="flex flex-col gap-4 border-t border-border p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-[9px] text-muted-foreground">
@@ -375,6 +400,8 @@ export function CVFuzzDashboard() {
   const [transforms, setTransforms] = useState<TransformConfig[]>([])
   const [model, setModel] = useState<File | null>(null)
   const [video, setVideo] = useState<File | null>(null)
+  const [devices, setDevices] = useState<InferenceDevice[]>([])
+  const [device, setDevice] = useState<InferenceDevice["id"]>("auto")
   const [running, setRunning] = useState(false)
   const [loadingRuns, setLoadingRuns] = useState(true)
   const [progress, setProgress] = useState(0)
@@ -406,14 +433,16 @@ export function CVFuzzDashboard() {
     let cancelled = false
     async function loadInitialState() {
       try {
-        const [initialRuns, initialTransforms] = await Promise.all([
+        const [initialRuns, initialConfig] = await Promise.all([
           getRuns(),
           getTransformConfig(),
         ])
         const initialRun = initialRuns[0] ? await getRun(initialRuns[0].id) : null
         if (cancelled) return
         setRuns(initialRuns)
-        setTransforms(initialTransforms)
+        setTransforms(initialConfig.transforms)
+        setDevices(initialConfig.devices)
+        setDevice(initialConfig.default_device)
         setSelectedId(initialRun?.id ?? null)
         setSelectedRun(initialRun)
       } catch (cause) {
@@ -458,6 +487,7 @@ export function CVFuzzDashboard() {
       const completed = await submitRun({
         model,
         video,
+        device,
         onProgress: (state) => { setProgress(state.progress); setProgressLabel(state.label) },
         onAccepted: (run) => { setSelectedId(run.id); setSelectedRun(run); void refreshRuns() },
         onUpdate: (run) => setSelectedRun(run),
@@ -477,7 +507,7 @@ export function CVFuzzDashboard() {
       <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] lg:grid-cols-[280px_minmax(0,1fr)]">
         <RunsSidebar runs={runs} selectedId={selectedId} loading={loadingRuns} onSelect={(id) => void selectRun(id)} onRefresh={() => void refreshRuns()} onNewRun={newRun} />
         <main className="min-w-0 px-4 sm:px-6 xl:px-8">
-          {selectedRun ? <ActiveRun key={selectedRun.id} run={selectedRun} /> : <RunSetup model={model} video={video} transforms={transforms} onModel={setModel} onVideo={setVideo} onRun={() => void handleRun()} running={running} progress={progress} progressLabel={progressLabel} error={error} />}
+          {selectedRun ? <ActiveRun key={selectedRun.id} run={selectedRun} /> : <RunSetup model={model} video={video} devices={devices} device={device} transforms={transforms} onModel={setModel} onVideo={setVideo} onDevice={setDevice} onRun={() => void handleRun()} running={running} progress={progress} progressLabel={progressLabel} error={error} />}
           {error && selectedRun && <div className="fixed bottom-5 right-5 z-50 flex max-w-md items-start gap-3 border border-alert/40 bg-card p-4 shadow-xl"><AlertTriangle className="mt-0.5 size-4 shrink-0 text-alert" /><div><p className="text-xs font-semibold">API error</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{error}</p></div></div>}
         </main>
       </div>

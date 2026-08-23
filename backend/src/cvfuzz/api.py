@@ -10,8 +10,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from cvfuzz.config import CVFuzzConfig, load_config
+from cvfuzz.exceptions import ModelAdapterError
 from cvfuzz.media import VIDEO_SUFFIXES
-from cvfuzz.models import UltralyticsDetector
+from cvfuzz.models import UltralyticsDetector, device_capabilities, resolve_device
 from cvfuzz.storage import safe_name
 from cvfuzz.video_runner import VideoEvaluationRunner
 from cvfuzz.video_storage import VideoRunStore, list_runs, read_run
@@ -76,7 +77,13 @@ def create_app(
     def execute_run(store: VideoRunStore, model_path: Path, source_path: Path, device: str | None):
         try:
             config: CVFuzzConfig = load_config(store.path / "config.yaml")
-            store.update(status="running", progress=0, stage="Loading model adapter")
+            resolved_device = resolve_device(device)
+            device_label = "Apple GPU (MPS)" if resolved_device == "mps" else "CPU"
+            store.update(
+                status="running",
+                progress=0,
+                stage=f"Loading model on {device_label}",
+            )
             detector = factory(model_path, device)
             VideoEvaluationRunner(detector, config, store).run(source_path)
         except Exception as exc:
@@ -96,6 +103,7 @@ def create_app(
         config = load_config(selected_config)
         return {
             "version": config.version,
+            **device_capabilities(),
             "transforms": [
                 {
                     "id": item.name,
@@ -155,6 +163,10 @@ def create_app(
             )
         if Path(video_name).suffix.lower() not in VIDEO_SUFFIXES:
             raise HTTPException(status_code=400, detail="Unsupported video format")
+        try:
+            resolve_device(device)
+        except ModelAdapterError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
         store = VideoRunStore(root, model_name=model_name, source_name=video_name)
         model_path = store.inputs_path / safe_name(model_name)
