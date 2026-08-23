@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="brand/assets/cvfuzz-readme-banner.png" alt="Cinematic computer-vision robustness testing scene with a signal-lime detection frame" width="100%">
+</p>
+
 # CVFuzz
 
 **Find what breaks your computer vision model automatically.**
