@@ -167,11 +167,11 @@ error, and informational states; the brand accent must not carry all four meanin
 
 ## 4. Typography
 
-### Primary family — Geist Sans
+### Primary family — Space Grotesk
 
-Use **Geist Sans** for headlines, interface text, documentation, reports, and marketing copy. Its
-clear, compact forms support a modern developer-tool identity and already align with the frontend
-foundation.
+Use **Space Grotesk** for headlines, interface text, documentation, reports, and marketing copy.
+Its engineered geometry complements the custom logo and makes the product feel precise,
+technical, and forward-looking without losing clarity.
 
 - Prefer **Semibold** for headlines and key metrics.
 - Prefer **Medium** for labels, navigation, and buttons.
@@ -179,9 +179,9 @@ foundation.
 - Use sentence case by default.
 - Keep line lengths between roughly **55 and 80 characters** for long-form reading.
 
-### Technical family — Geist Mono
+### Technical family — IBM Plex Mono
 
-Use **Geist Mono** for:
+Use **IBM Plex Mono** for:
 
 - transformation names and parameters;
 - model identifiers, seeds, paths, and commands;
@@ -194,7 +194,7 @@ Mono should separate explanation from evidence.
 ### Wordmark
 
 The letterforms inside the logo are custom artwork. Do not attempt to reconstruct the wordmark
-with Geist or another typeface.
+with Space Grotesk or another typeface.
 
 ## 5. Writing and voice
 

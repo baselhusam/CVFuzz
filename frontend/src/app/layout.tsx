@@ -1,10 +1,10 @@
 import type { Metadata } from "next"
-import { Bricolage_Grotesque, IBM_Plex_Mono } from "next/font/google"
+import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google"
 import { Providers } from "@/components/providers"
 import "./globals.css"
 
-const bricolage = Bricolage_Grotesque({
-  variable: "--font-bricolage",
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space-grotesk",
   subsets: ["latin"],
 })
 
@@ -23,7 +23,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${bricolage.variable} ${plexMono.variable} h-full antialiased`}
+      className={`${spaceGrotesk.variable} ${plexMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full"><Providers>{children}</Providers></body>

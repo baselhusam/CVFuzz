@@ -13,3 +13,10 @@ Current brand tokens:
 | `brand.paper` | `#F7F9F2` |
 | `brand.mist` | `#E7ECE3` |
 | `brand.slate` | `#69737F` |
+
+Typography roles:
+
+| Role | Family | Use |
+| --- | --- | --- |
+| Display and interface | Space Grotesk | Headings, navigation, controls, explanatory copy. |
+| Evidence and metadata | IBM Plex Mono | Parameters, results, commands, paths, and technical labels. |

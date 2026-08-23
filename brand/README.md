@@ -6,6 +6,7 @@ This is the canonical home for CVFuzz brand materials.
 | --- | --- |
 | [`logos/`](logos/) | Approved light- and dark-background logo and symbol assets. |
 | [`assets/`](assets/) | Approved imagery used in the brand guidelines. |
+| [`fonts/`](fonts/) | Open-licensed Space Grotesk and IBM Plex Mono font files and licenses. |
 | [`guidelines/`](guidelines/) | Editable HTML guide, Markdown reference, and PDF export link. |
 | [`design-system/`](design-system/) | Product design-system foundations derived from the brand. |
 

@@ -27,7 +27,7 @@
   --color-signal-soft: var(--signal-soft);
   --color-alert: var(--alert);
   --color-ink: #111511;
-  --font-sans: var(--font-bricolage);
+  --font-sans: var(--font-space-grotesk);
   --font-mono: var(--font-plex-mono);
   --radius-sm: 0.15rem;
   --radius-md: 0.25rem;
