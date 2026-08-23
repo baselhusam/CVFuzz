@@ -1,0 +1,112 @@
+version: 1
+
+run:
+  baseline_confidence: 0.50
+  sample_every_n_frames: 30
+  max_frames: 25
+  seed: 42
+  output_dir: .cvfuzz/runs
+  save_failures: true
+
+failure:
+  # Associate detections at this IoU; report localization failure below localization_iou.
+  match_iou: 0.30
+  missed_below_confidence: 0.25
+  confidence_drop_fraction: 0.50
+  localization_iou: 0.50
+  detect_class_flip: true
+
+boundary:
+  refine: true
+  tolerance: 0.05
+  max_iterations: 8
+
+transforms:
+  exposure:
+    enabled: true
+    search_parameter: stops
+    identity_value: 0.0
+    parameters:
+      stops:
+        values: [-0.5, -1.0, -1.5, -2.0, -2.5, -3.0]
+
+  low_light:
+    enabled: true
+    search_parameter: stops
+    identity_value: 0.0
+    parameters:
+      stops:
+        values: [-0.5, -1.0, -1.5, -2.0, -2.5, -3.0]
+      noise_std:
+        values: [4.0, 8.0]
+
+  motion_blur:
+    enabled: true
+    search_parameter: kernel_size
+    identity_value: 1
+    parameters:
+      kernel_size:
+        values: [3, 5, 7, 9, 11, 15, 21]
+      angle_degrees:
+        values: [0, 45, 90]
+
+  defocus_blur:
+    enabled: true
+    search_parameter: sigma
+    identity_value: 0.0
+    parameters:
+      sigma:
+        values: [0.5, 1.0, 1.5, 2.0, 3.0, 4.0]
+
+  jpeg_compression:
+    enabled: true
+    search_parameter: quality
+    identity_value: 100
+    parameters:
+      quality:
+        values: [90, 75, 60, 45, 30, 15, 5]
+
+  resolution_degradation:
+    enabled: true
+    search_parameter: scale
+    identity_value: 1.0
+    parameters:
+      scale:
+        values: [0.85, 0.70, 0.55, 0.40, 0.25, 0.15]
+      interpolation:
+        values: [area]
+
+  fog:
+    enabled: true
+    search_parameter: strength
+    identity_value: 0.0
+    parameters:
+      strength:
+        values: [0.10, 0.20, 0.30, 0.40, 0.55, 0.70]
+
+  partial_occlusion:
+    enabled: true
+    search_parameter: fraction
+    identity_value: 0.0
+    target_aware: true
+    parameters:
+      fraction:
+        values: [0.10, 0.20, 0.30, 0.40, 0.50, 0.65]
+      position:
+        values: [center, top, bottom]
+      color:
+        values: [mean]
+
+  glare:
+    enabled: true
+    search_parameter: intensity
+    identity_value: 0.0
+    parameters:
+      intensity:
+        values: [0.15, 0.30, 0.45, 0.60, 0.75]
+      radius_fraction:
+        values: [0.18, 0.30]
+      center_x:
+        values: [0.35, 0.65]
+      center_y:
+        values: [0.35]
