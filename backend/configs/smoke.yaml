@@ -1,0 +1,85 @@
+version: 1
+
+run:
+  baseline_confidence: 0.50
+  sample_every_n_frames: 1
+  max_frames: 1
+  seed: 42
+  output_dir: test-runs
+  save_failures: true
+
+failure:
+  match_iou: 0.30
+  missed_below_confidence: 0.25
+  confidence_drop_fraction: 0.50
+  localization_iou: 0.50
+  detect_class_flip: true
+
+boundary:
+  refine: true
+  tolerance: 0.10
+  max_iterations: 6
+
+transforms:
+  exposure:
+    search_parameter: stops
+    identity_value: 0.0
+    parameters:
+      stops: {values: [-1.0, -2.0, -3.0]}
+
+  low_light:
+    search_parameter: stops
+    identity_value: 0.0
+    parameters:
+      stops: {values: [-1.0, -2.0, -3.0]}
+      noise_std: {values: [6.0]}
+
+  motion_blur:
+    search_parameter: kernel_size
+    identity_value: 1
+    parameters:
+      kernel_size: {values: [5, 11, 21]}
+      angle_degrees: {values: [0]}
+
+  defocus_blur:
+    search_parameter: sigma
+    identity_value: 0.0
+    parameters:
+      sigma: {values: [1.0, 3.0, 6.0]}
+
+  jpeg_compression:
+    search_parameter: quality
+    identity_value: 100
+    parameters:
+      quality: {values: [70, 30, 5]}
+
+  resolution_degradation:
+    search_parameter: scale
+    identity_value: 1.0
+    parameters:
+      scale: {values: [0.60, 0.30, 0.10]}
+      interpolation: {values: [area]}
+
+  fog:
+    search_parameter: strength
+    identity_value: 0.0
+    parameters:
+      strength: {values: [0.20, 0.50, 0.80]}
+
+  partial_occlusion:
+    search_parameter: fraction
+    identity_value: 0.0
+    target_aware: true
+    parameters:
+      fraction: {values: [0.25, 0.50, 0.75]}
+      position: {values: [center]}
+      color: {values: [mean]}
+
+  glare:
+    search_parameter: intensity
+    identity_value: 0.0
+    parameters:
+      intensity: {values: [0.25, 0.50, 0.80]}
+      radius_fraction: {values: [0.30]}
+      center_x: {values: [0.50]}
+      center_y: {values: [0.50]}
