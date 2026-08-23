@@ -1,34 +1,44 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import {
-  ArrowDown,
+  AlertTriangle,
   Check,
-  ChevronRight,
   CircleStop,
-  Code2,
+  Film,
+  FlaskConical,
+  Gauge,
+  LoaderCircle,
   Moon,
   Pause,
   Play,
-  RotateCcw,
-  Sparkles,
+  Plus,
+  RefreshCw,
   Sun,
   Volume2,
   VolumeX,
 } from "lucide-react"
 import { useTheme } from "next-themes"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { FileDropzone } from "@/components/file-dropzone"
 import { MetricsPanel } from "@/components/metrics-panel"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { VideoStage } from "@/components/video-stage"
-import { augmentationResults } from "@/lib/run-data"
-import { submitRun } from "@/lib/run-service"
+import {
+  formatParameters,
+  formatTime,
+  type RunArtifact,
+  type RunRecord,
+  type RunSummary,
+  type TransformConfig,
+  type TransformMetrics,
+} from "@/lib/run-data"
+import { getRun, getRuns, getTransformConfig, submitRun } from "@/lib/run-service"
 
 const reveal = {
-  hidden: { opacity: 0, y: 22 },
+  hidden: { opacity: 0, y: 18 },
   visible: { opacity: 1, y: 0 },
 }
 
@@ -57,30 +67,112 @@ function ThemeToggle() {
 
 function Header({ onNewRun }: { onNewRun: () => void }) {
   return (
-    <header className="sticky top-0 z-50 border-b border-border/80 bg-background/82 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-[1500px] items-center justify-between px-4 sm:px-6 lg:px-8">
-        <a href="#top" className="flex items-center gap-3" aria-label="CVFuzz home">
+    <header className="sticky top-0 z-50 border-b border-border/80 bg-background/88 backdrop-blur-xl">
+      <div className="flex h-16 items-center justify-between px-4 sm:px-6">
+        <button type="button" onClick={onNewRun} className="flex items-center gap-3">
           <span className="logo-mark" aria-hidden="true"><i /><i /><i /></span>
           <span className="text-sm font-bold tracking-[-0.025em]">CVFUZZ</span>
-          <Badge variant="outline" className="hidden rounded-full border-border px-2 font-mono text-[8px] text-muted-foreground sm:inline-flex">ALPHA 0.1</Badge>
-        </a>
-        <nav className="hidden items-center gap-7 font-mono text-[10px] tracking-[0.08em] text-muted-foreground md:flex">
-          <a className="transition-colors hover:text-foreground" href="#run">RUN</a>
-          <a className="transition-colors hover:text-foreground" href="#results">VIDEO WALL</a>
-          <a className="transition-colors hover:text-foreground" href="#metrics">METRICS</a>
-        </nav>
+          <Badge variant="outline" className="hidden rounded-full px-2 font-mono text-[8px] text-muted-foreground sm:inline-flex">
+            LOCAL LAB
+          </Badge>
+        </button>
         <div className="flex items-center gap-2">
+          <span className="mr-2 hidden items-center gap-2 font-mono text-[9px] text-muted-foreground md:flex">
+            <i className="size-1.5 rounded-full bg-signal" /> FILE-BACKED API
+          </span>
           <ThemeToggle />
-          <Button onClick={onNewRun} className="h-9 rounded-full bg-foreground px-4 text-background hover:bg-foreground/85">New run <ChevronRight className="ml-1 size-3.5" /></Button>
+          <Button onClick={onNewRun} className="h-9 rounded-full bg-foreground px-4 text-background hover:bg-foreground/85">
+            <Plus className="size-3.5" /> New run
+          </Button>
         </div>
       </div>
     </header>
   )
 }
 
+function RunStatus({ status }: { status: RunSummary["status"] }) {
+  const tone =
+    status === "completed"
+      ? "bg-signal"
+      : status === "failed"
+        ? "bg-alert"
+        : "animate-pulse bg-amber-400"
+  return <i className={`size-1.5 shrink-0 rounded-full ${tone}`} />
+}
+
+function RunsSidebar({
+  runs,
+  selectedId,
+  loading,
+  onSelect,
+  onRefresh,
+  onNewRun,
+}: {
+  runs: RunSummary[]
+  selectedId: string | null
+  loading: boolean
+  onSelect: (id: string) => void
+  onRefresh: () => void
+  onNewRun: () => void
+}) {
+  return (
+    <aside className="min-w-0 max-w-full border-b border-border bg-card/75 lg:min-h-[calc(100vh-4rem)] lg:border-b-0 lg:border-r">
+      <div className="flex items-center justify-between border-b border-border px-4 py-4">
+        <div>
+          <p className="font-mono text-[9px] tracking-[0.16em] text-muted-foreground">RUN ARCHIVE</p>
+          <p className="mt-1 text-sm font-semibold">{runs.length} local runs</p>
+        </div>
+        <button type="button" onClick={onRefresh} className="text-muted-foreground hover:text-foreground" aria-label="Refresh runs">
+          <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
+        </button>
+      </div>
+      <div className="flex gap-2 overflow-x-auto p-3 lg:block lg:max-h-[calc(100vh-9rem)] lg:space-y-2 lg:overflow-y-auto">
+        <button
+          type="button"
+          onClick={onNewRun}
+          className="flex min-w-52 items-center gap-3 border border-dashed border-border bg-background/45 p-3 text-left transition-colors hover:border-signal lg:w-full"
+        >
+          <span className="flex size-8 items-center justify-center bg-signal text-ink"><Plus className="size-4" /></span>
+          <span><strong className="block text-xs">Create a run</strong><small className="text-[10px] text-muted-foreground">Upload model + video</small></span>
+        </button>
+        {runs.map((run) => (
+          <button
+            type="button"
+            key={run.id}
+            onClick={() => onSelect(run.id)}
+            className={`min-w-64 border p-3 text-left transition-colors lg:w-full lg:min-w-0 ${
+              selectedId === run.id
+                ? "border-foreground bg-foreground text-background"
+                : "border-border bg-card hover:border-foreground/45"
+            }`}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <span className="flex min-w-0 items-center gap-2 font-mono text-[8px] tracking-[0.08em]">
+                <RunStatus status={run.status} /> {run.status.toUpperCase()}
+              </span>
+              <span className={`font-mono text-[8px] ${selectedId === run.id ? "text-background/55" : "text-muted-foreground"}`}>
+                {run.id.slice(-8)}
+              </span>
+            </div>
+            <p className="mt-3 truncate text-xs font-semibold">{run.source.name || "Video"}</p>
+            <p className={`mt-1 truncate font-mono text-[9px] ${selectedId === run.id ? "text-background/60" : "text-muted-foreground"}`}>
+              {run.model.name || "Model"}
+            </p>
+            <div className="mt-3 flex items-center justify-between font-mono text-[8px]">
+              <span>{new Date(run.started_at).toLocaleDateString()}</span>
+              <span>{run.metrics ? `${run.metrics.robustness_score} SCORE` : `${run.progress}%`}</span>
+            </div>
+          </button>
+        ))}
+      </div>
+    </aside>
+  )
+}
+
 function RunSetup({
   model,
   video,
+  transforms,
   onModel,
   onVideo,
   onRun,
@@ -91,6 +183,7 @@ function RunSetup({
 }: {
   model: File | null
   video: File | null
+  transforms: TransformConfig[]
   onModel: (file: File | null) => void
   onVideo: (file: File | null) => void
   onRun: () => void
@@ -99,103 +192,111 @@ function RunSetup({
   progressLabel: string
   error: string | null
 }) {
-  const ready = Boolean(model && video)
+  const enabled = transforms.filter((item) => item.enabled)
   return (
-    <motion.section
-      id="run"
-      variants={reveal}
-      initial="hidden"
-      animate="visible"
-      transition={{ duration: 0.6, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
-      className="scroll-mt-28 border border-border bg-card shadow-[0_22px_80px_rgba(0,0,0,.06)] dark:shadow-[0_22px_80px_rgba(0,0,0,.25)]"
-    >
-      <div className="grid gap-px bg-border md:grid-cols-2">
-        <FileDropzone kind="model" file={model} onFile={onModel} />
-        <FileDropzone kind="video" file={video} onFile={onVideo} />
-      </div>
-      <div className="flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-[10px] text-muted-foreground">
-          <span className="flex items-center gap-2"><Check className="size-3 text-signal" /> FULL VIDEO</span>
-          <span className="flex items-center gap-2"><Check className="size-3 text-signal" /> 9 TECHNIQUES</span>
-          <span className="flex items-center gap-2"><Check className="size-3 text-signal" /> ALL DETECTIONS</span>
+    <motion.div variants={reveal} initial="hidden" animate="visible" className="mx-auto max-w-6xl py-8 md:py-12">
+      <div className="mb-10 grid gap-8 xl:grid-cols-[1fr_.48fr] xl:items-end">
+        <div>
+          <p className="section-kicker">NEW FULL-STREAM EVALUATION</p>
+          <h1 className="mt-4 max-w-3xl text-4xl font-semibold leading-[0.95] tracking-[-0.055em] sm:text-6xl">
+            One video in<span className="text-signal">.</span><br />Every condition out<span className="text-alert">.</span>
+          </h1>
         </div>
-        <Button
-          size="lg"
-          disabled={!ready || running}
-          onClick={onRun}
-          className="h-12 min-w-48 rounded-none bg-signal px-7 font-semibold text-ink shadow-[4px_4px_0_var(--foreground)] hover:bg-signal/85 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
-        >
-          {running ? <><CircleStop className="size-4 animate-pulse" /> Running {progress}%</> : <><Play className="size-4 fill-current" /> Run robustness test</>}
-        </Button>
+        <p className="border-l border-border pl-5 text-sm leading-6 text-muted-foreground">
+          CVFuzz applies every enabled augmentation to every frame, runs your detector on the
+          original and every generated stream, then stores playable outputs and evaluation files.
+        </p>
       </div>
-      <AnimatePresence>
-        {(running || progress === 100 || error) && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden border-t border-border">
-            <div className="flex items-center justify-between px-5 py-3 font-mono text-[10px]">
-              <span className={error ? "text-destructive" : "text-muted-foreground"}>{error ?? progressLabel}</span>
-              <span>{error ? "FAILED" : `${progress}%`}</span>
-            </div>
-            {!error && <div className="h-1 bg-muted"><motion.div className="h-full bg-signal" animate={{ width: `${progress}%` }} transition={{ ease: "easeOut" }} /></div>}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.section>
+      <section className="border border-border bg-card shadow-[0_22px_80px_rgba(0,0,0,.08)]">
+        <div className="grid gap-px bg-border md:grid-cols-2">
+          <FileDropzone kind="model" file={model} onFile={onModel} />
+          <FileDropzone kind="video" file={video} onFile={onVideo} />
+        </div>
+        <div className="border-t border-border p-4 md:p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <p className="font-mono text-[9px] tracking-[0.15em] text-muted-foreground">ACTIVE AUGMENTATION VIDEOS</p>
+            <Badge variant="outline" className="rounded-full font-mono text-[9px]">{enabled.length || 9} OUTPUTS</Badge>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {enabled.map((item) => (
+              <span key={item.id} className="border border-border bg-background px-2.5 py-2 font-mono text-[8px] text-muted-foreground">
+                <strong className="mr-2 text-foreground">{item.name.toUpperCase()}</strong>
+                {formatParameters(item.parameters)}
+              </span>
+            ))}
+            {!enabled.length && <span className="text-xs text-muted-foreground">Connect the API to load the configured techniques.</span>}
+          </div>
+        </div>
+        <div className="flex flex-col gap-4 border-t border-border p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-[9px] text-muted-foreground">
+            <span className="flex items-center gap-2"><Check className="size-3 text-signal" /> EVERY FRAME</span>
+            <span className="flex items-center gap-2"><Check className="size-3 text-signal" /> REAL INFERENCE</span>
+            <span className="flex items-center gap-2"><Check className="size-3 text-signal" /> FILE-BACKED RUN</span>
+          </div>
+          <Button
+            size="lg"
+            disabled={!model || !video || running}
+            onClick={onRun}
+            className="h-12 min-w-56 rounded-none bg-signal px-7 font-semibold text-ink shadow-[4px_4px_0_var(--foreground)] hover:bg-signal/85 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
+          >
+            {running ? <><CircleStop className="size-4 animate-pulse" /> Running {progress}%</> : <><Play className="size-4 fill-current" /> Apply + evaluate</>}
+          </Button>
+        </div>
+        <AnimatePresence>
+          {(running || error) && (
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} className="overflow-hidden border-t border-border">
+              <div className="flex items-center justify-between px-5 py-3 font-mono text-[10px]">
+                <span className={error ? "text-alert" : "text-muted-foreground"}>{error ?? progressLabel}</span>
+                <span>{error ? "FAILED" : `${progress}%`}</span>
+              </div>
+              {!error && <div className="h-1 bg-muted"><motion.div className="h-full bg-signal" animate={{ width: `${progress}%` }} /></div>}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </section>
+    </motion.div>
   )
-}
-
-function formatTime(value: number) {
-  if (!Number.isFinite(value)) return "00:00"
-  const minutes = Math.floor(value / 60).toString().padStart(2, "0")
-  const seconds = Math.floor(value % 60).toString().padStart(2, "0")
-  return `${minutes}:${seconds}`
 }
 
 function ResultCard({
-  result,
-  videoUrl,
-  playing,
+  artifact,
+  metric,
   registerVideo,
 }: {
-  result: (typeof augmentationResults)[number]
-  videoUrl: string | null
-  playing: boolean
+  artifact: RunArtifact
+  metric: TransformMetrics
   registerVideo: (id: string, node: HTMLVideoElement | null) => void
 }) {
   return (
-    <motion.article
-      variants={reveal}
-      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-      className="overflow-hidden border border-border bg-card"
-    >
-      <div className="flex items-center justify-between border-b border-border px-3.5 py-3">
-        <div className="flex items-center gap-2.5">
-          <span className="font-mono text-[9px] text-muted-foreground">{result.shortName}</span>
-          <h3 className="text-sm font-semibold tracking-[-0.02em]">{result.name}</h3>
-        </div>
-        <span className="font-mono text-[9px] text-muted-foreground">{result.parameter}</span>
+    <article className="overflow-hidden border border-border bg-card">
+      <div className="flex items-start justify-between gap-4 border-b border-border px-3.5 py-3">
+        <div><p className="font-mono text-[8px] text-muted-foreground">{metric.id.slice(0, 3).toUpperCase()}</p><h3 className="mt-1 text-sm font-semibold">{metric.name}</h3></div>
+        <span className="max-w-48 text-right font-mono text-[8px] leading-4 text-muted-foreground">{formatParameters(metric.parameters)}</span>
       </div>
-      <VideoStage id={result.id} videoUrl={videoUrl} result={result} playing={playing} registerVideo={registerVideo} />
+      <VideoStage id={artifact.id} videoUrl={artifact.url} label={artifact.name} registerVideo={registerVideo} />
       <div className="grid grid-cols-3 divide-x divide-border border-t border-border">
-        <div className="p-3"><span className="metric-label">CONF.</span><p className="mt-1 font-mono text-xs font-semibold">{result.confidence}%</p></div>
-        <div className="p-3"><span className="metric-label">DELTA</span><p className="mt-1 font-mono text-xs font-semibold text-alert">{result.confidenceDelta}%</p></div>
-        <div className="p-3"><span className="metric-label">FAILURES</span><p className="mt-1 font-mono text-xs font-semibold">{result.failures}</p></div>
+        <div className="p-3"><span className="metric-label">RETENTION</span><p className="mt-1 font-mono text-xs font-semibold">{metric.retention}%</p></div>
+        <div className="p-3"><span className="metric-label">CONF. Δ</span><p className="mt-1 font-mono text-xs font-semibold text-alert">{metric.confidence_delta}%</p></div>
+        <div className="p-3"><span className="metric-label">FAILURES</span><p className="mt-1 font-mono text-xs font-semibold">{metric.failures}</p></div>
       </div>
-    </motion.article>
+    </article>
   )
 }
 
-function VideoWall({ videoUrl, videoName }: { videoUrl: string | null; videoName: string | null }) {
+function VideoWall({ run }: { run: RunRecord }) {
   const videos = useRef(new Map<string, HTMLVideoElement>())
-  const [playing, setPlaying] = useState(true)
+  const [playing, setPlaying] = useState(false)
   const [muted, setMuted] = useState(true)
-  const [time, setTime] = useState(12.4)
-  const [duration, setDuration] = useState(48)
+  const [time, setTime] = useState(0)
+  const [duration, setDuration] = useState(run.metrics?.video_duration_seconds || 0)
+  const original = run.artifacts.find((item) => item.kind === "original")
+  const artifactById = new Map(run.artifacts.map((item) => [item.id, item]))
+  const weakest = run.metrics?.transforms.find((item) => item.id === run.metrics?.weakest_transform)
 
   const registerVideo = (id: string, node: HTMLVideoElement | null) => {
     if (node) videos.current.set(id, node)
     else videos.current.delete(id)
   }
-
   const togglePlayback = async () => {
     const next = !playing
     setPlaying(next)
@@ -204,84 +305,144 @@ function VideoWall({ videoUrl, videoName }: { videoUrl: string | null; videoName
       else video.pause()
     }
   }
-
   const toggleMute = () => {
     const next = !muted
     setMuted(next)
     for (const [id, video] of videos.current) video.muted = id !== "original" || next
   }
-
   const seek = (next: number) => {
     setTime(next)
     for (const video of videos.current.values()) video.currentTime = next
   }
 
+  if (!original || !run.metrics) return null
   return (
-    <section id="results" className="scroll-mt-24 py-16 md:py-24">
-      <div className="mb-9 flex flex-col justify-between gap-5 md:flex-row md:items-end">
-        <div>
-          <p className="section-kicker">02 / VIDEO WALL</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em] md:text-5xl">One stream. Ten realities.</h2>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="flex items-center gap-2 font-mono text-[9px] text-muted-foreground"><i className="size-1.5 animate-pulse rounded-full bg-signal" /> SYNCHRONIZED PLAYBACK</span>
-          <Badge variant="outline" className="rounded-full font-mono text-[9px]">184 FRAMES</Badge>
-        </div>
+    <section id="results" className="py-8 md:py-12">
+      <div className="mb-8 flex flex-col justify-between gap-5 md:flex-row md:items-end">
+        <div><p className="section-kicker">02 / GENERATED OUTPUTS</p><h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em] md:text-5xl">One timeline. {run.artifacts.length} realities.</h2></div>
+        <div className="flex items-center gap-3"><span className="font-mono text-[9px] text-muted-foreground">{run.metrics.frames_analyzed} FRAMES · {run.metrics.fps} FPS</span><Badge variant="outline" className="rounded-full font-mono text-[9px]">SYNCHRONIZED</Badge></div>
       </div>
-
-      <div className="grid gap-px border border-border bg-border lg:grid-cols-[1.65fr_.65fr]">
+      <div className="grid gap-px border border-border bg-border xl:grid-cols-[1.65fr_.65fr]">
         <div className="bg-card">
-          <div className="flex items-center justify-between border-b border-border px-4 py-3">
-            <div className="flex items-center gap-2.5"><span className="font-mono text-[9px] text-muted-foreground">ORG</span><h3 className="text-sm font-semibold">Original + inference</h3></div>
-            <span className="max-w-44 truncate font-mono text-[9px] text-muted-foreground">{videoName ?? "street-sequence-04.mp4"}</span>
-          </div>
-          <VideoStage id="original" videoUrl={videoUrl} featured playing={playing} registerVideo={registerVideo} onTimeUpdate={(nextTime, nextDuration) => { setTime(nextTime); setDuration(nextDuration || 48) }} />
+          <div className="flex items-center justify-between border-b border-border px-4 py-3"><h3 className="text-sm font-semibold">Original + model inference</h3><span className="max-w-56 truncate font-mono text-[9px] text-muted-foreground">{run.source.name}</span></div>
+          <VideoStage id="original" videoUrl={original.url} label="Original inference" featured registerVideo={registerVideo} onTimeUpdate={(nextTime, nextDuration) => { setTime(nextTime); if (nextDuration) setDuration(nextDuration) }} />
         </div>
         <aside className="flex flex-col justify-between bg-card p-5 md:p-7">
-          <div>
-            <p className="font-mono text-[9px] tracking-[0.14em] text-muted-foreground">RUN DIAGNOSIS</p>
-            <div className="mt-5 flex items-start justify-between">
-              <div><p className="text-sm text-muted-foreground">Weakest condition</p><p className="mt-1 text-xl font-semibold tracking-[-0.035em]">Partial occlusion</p></div>
-              <span className="flex size-9 items-center justify-center rounded-full bg-alert/12 text-alert"><ArrowDown className="size-4" /></span>
-            </div>
-            <p className="mt-5 border-l-2 border-alert pl-4 text-sm leading-6 text-muted-foreground">The first sustained miss appears at 40% center occlusion. Motion blur causes the earliest localization drift.</p>
-          </div>
-          <div className="mt-8 grid grid-cols-2 gap-px bg-border">
-            <div className="bg-card py-4 pr-3"><span className="metric-label">BASELINE</span><p className="mt-1 text-2xl font-semibold">91.8%</p></div>
-            <div className="bg-card py-4 pl-4"><span className="metric-label">WORST CASE</span><p className="mt-1 text-2xl font-semibold text-alert">48.3%</p></div>
-          </div>
+          <div><p className="font-mono text-[9px] tracking-[0.14em] text-muted-foreground">RUN DIAGNOSIS</p><div className="mt-6 flex items-start justify-between"><div><p className="text-sm text-muted-foreground">Weakest stream</p><p className="mt-1 text-xl font-semibold">{weakest?.name || "No failures"}</p></div><span className="flex size-9 items-center justify-center rounded-full bg-alert/12 text-alert"><Gauge className="size-4" /></span></div><p className="mt-5 border-l-2 border-alert pl-4 text-sm leading-6 text-muted-foreground">{weakest ? `${weakest.failures} object failures across ${weakest.affected_frames} frames. First failure at ${formatTime(weakest.first_failure_seconds)}.` : "All baseline detections remained stable."}</p></div>
+          <div className="mt-8 grid grid-cols-2 gap-px bg-border"><div className="bg-card py-4 pr-3"><span className="metric-label">BASELINE CONF.</span><p className="mt-1 text-2xl font-semibold">{run.metrics.baseline.mean_confidence}%</p></div><div className="bg-card py-4 pl-4"><span className="metric-label">ROBUSTNESS</span><p className="mt-1 text-2xl font-semibold text-alert">{run.metrics.robustness_score}</p></div></div>
         </aside>
       </div>
-
-      <div className="flex flex-col items-center gap-3 border-x border-b border-border bg-card px-4 py-3 sm:flex-row">
+      <div className="flex items-center gap-3 border-x border-b border-border bg-card px-4 py-3">
         <button type="button" onClick={togglePlayback} className="flex size-8 items-center justify-center rounded-full bg-foreground text-background" aria-label={playing ? "Pause all videos" : "Play all videos"}>{playing ? <Pause className="size-3.5 fill-current" /> : <Play className="size-3.5 fill-current" />}</button>
         <span className="w-11 font-mono text-[9px] text-muted-foreground">{formatTime(time)}</span>
         <input className="timeline-range h-1 flex-1" type="range" min="0" max={Math.max(duration, 1)} step="0.1" value={Math.min(time, duration)} onChange={(event) => seek(Number(event.target.value))} aria-label="Video timeline" />
         <span className="w-11 font-mono text-[9px] text-muted-foreground">{formatTime(duration)}</span>
-        <button type="button" onClick={toggleMute} className="text-muted-foreground transition-colors hover:text-foreground" aria-label={muted ? "Unmute original video" : "Mute original video"}>{muted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}</button>
+        <button type="button" onClick={toggleMute} className="text-muted-foreground hover:text-foreground" aria-label={muted ? "Unmute original" : "Mute original"}>{muted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}</button>
       </div>
-
-      <motion.div initial="hidden" animate="visible" transition={{ staggerChildren: 0.06, delayChildren: 0.12 }} className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {augmentationResults.map((result) => <ResultCard key={result.id} result={result} videoUrl={videoUrl} playing={playing} registerVideo={registerVideo} />)}
-      </motion.div>
+      <div className="mt-5 grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+        {run.metrics.transforms.map((metric) => {
+          const artifact = artifactById.get(metric.id)
+          return artifact ? <ResultCard key={metric.id} artifact={artifact} metric={metric} registerVideo={registerVideo} /> : null
+        })}
+      </div>
     </section>
   )
 }
 
+function ActiveRun({ run }: { run: RunRecord }) {
+  if (run.status === "completed" && run.metrics) return <><VideoWall run={run} /><MetricsPanel metrics={run.metrics} /></>
+  return (
+    <div className="mx-auto flex min-h-[70vh] max-w-3xl items-center justify-center py-16">
+      <div className="w-full border border-border bg-card p-8 text-center md:p-12">
+        {run.status === "failed" ? <AlertTriangle className="mx-auto size-9 text-alert" /> : <LoaderCircle className="mx-auto size-9 animate-spin text-signal" />}
+        <p className="mt-5 section-kicker">RUN {run.id.slice(-8).toUpperCase()}</p>
+        <h1 className="mt-3 text-3xl font-semibold">{run.status === "failed" ? "Run failed" : run.stage}</h1>
+        <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-muted-foreground">{run.error || `${run.model.name} × ${run.source.name}`}</p>
+        {run.status !== "failed" && <div className="mx-auto mt-8 max-w-xl"><div className="mb-2 flex justify-between font-mono text-[9px] text-muted-foreground"><span>FULL-STREAM PROCESSING</span><span>{run.progress}%</span></div><div className="h-1 bg-muted"><motion.div className="h-full bg-signal" animate={{ width: `${run.progress}%` }} /></div></div>}
+      </div>
+    </div>
+  )
+}
+
 export function CVFuzzDashboard() {
+  const [runs, setRuns] = useState<RunSummary[]>([])
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedRun, setSelectedRun] = useState<RunRecord | null>(null)
+  const [transforms, setTransforms] = useState<TransformConfig[]>([])
   const [model, setModel] = useState<File | null>(null)
   const [video, setVideo] = useState<File | null>(null)
-  const [videoUrl, setVideoUrl] = useState<string | null>(null)
   const [running, setRunning] = useState(false)
+  const [loadingRuns, setLoadingRuns] = useState(true)
   const [progress, setProgress] = useState(0)
   const [progressLabel, setProgressLabel] = useState("")
   const [error, setError] = useState<string | null>(null)
-  const [runMode, setRunMode] = useState<"sample" | "preview" | "api">("sample")
 
-  const handleVideo = (file: File | null) => {
-    if (videoUrl) URL.revokeObjectURL(videoUrl)
-    setVideo(file)
-    setVideoUrl(file ? URL.createObjectURL(file) : null)
+  const refreshRuns = useCallback(async () => {
+    setLoadingRuns(true)
+    try {
+      setRuns(await getRuns())
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not load runs")
+    } finally {
+      setLoadingRuns(false)
+    }
+  }, [])
+
+  const selectRun = useCallback(async (id: string) => {
+    setSelectedId(id)
+    setError(null)
+    try {
+      setSelectedRun(await getRun(id))
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not load the run")
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadInitialState() {
+      try {
+        const [initialRuns, initialTransforms] = await Promise.all([
+          getRuns(),
+          getTransformConfig(),
+        ])
+        const initialRun = initialRuns[0] ? await getRun(initialRuns[0].id) : null
+        if (cancelled) return
+        setRuns(initialRuns)
+        setTransforms(initialTransforms)
+        setSelectedId(initialRun?.id ?? null)
+        setSelectedRun(initialRun)
+      } catch (cause) {
+        if (!cancelled) {
+          setError(cause instanceof Error ? cause.message : "Could not load CVFuzz")
+        }
+      } finally {
+        if (!cancelled) setLoadingRuns(false)
+      }
+    }
+    void loadInitialState()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    const hasActiveRun = runs.some((run) => run.status === "queued" || run.status === "running")
+    if (!hasActiveRun || running) return
+    const timer = window.setInterval(() => {
+      void refreshRuns()
+      if (selectedId) void getRun(selectedId).then(setSelectedRun).catch(() => undefined)
+    }, 1400)
+    return () => window.clearInterval(timer)
+  }, [refreshRuns, running, runs, selectedId])
+
+  const newRun = () => {
+    setSelectedId(null)
+    setSelectedRun(null)
+    setModel(null)
+    setVideo(null)
+    setProgress(0)
+    setError(null)
   }
 
   const handleRun = async () => {
@@ -290,63 +451,33 @@ export function CVFuzzDashboard() {
     setProgress(0)
     setError(null)
     try {
-      const result = await submitRun({ model, video, onProgress: (state) => { setProgress(state.progress); setProgressLabel(state.label) } })
-      setRunMode(result.mode)
-      window.setTimeout(() => document.querySelector("#results")?.scrollIntoView({ behavior: "smooth" }), 320)
+      const completed = await submitRun({
+        model,
+        video,
+        onProgress: (state) => { setProgress(state.progress); setProgressLabel(state.label) },
+        onAccepted: (run) => { setSelectedId(run.id); setSelectedRun(run); void refreshRuns() },
+        onUpdate: (run) => setSelectedRun(run),
+      })
+      setSelectedRun(completed)
+      await refreshRuns()
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "The run could not be started")
+      setError(cause instanceof Error ? cause.message : "The run could not be completed")
     } finally {
       setRunning(false)
     }
   }
 
-  const reset = () => {
-    setModel(null)
-    handleVideo(null)
-    setProgress(0)
-    setError(null)
-    document.querySelector("#run")?.scrollIntoView({ behavior: "smooth", block: "center" })
-  }
-
   return (
-    <div id="top" className="min-h-screen overflow-clip bg-background text-foreground">
-      <Header onNewRun={reset} />
-      <main className="mx-auto max-w-[1500px] px-4 sm:px-6 lg:px-8">
-        <section className="relative grid min-h-[520px] items-center py-16 md:grid-cols-[1.15fr_.85fr] md:py-24">
-          <div className="pointer-events-none absolute right-[-8%] top-[8%] -z-0 size-[430px] rounded-full bg-signal-soft blur-[90px]" />
-          <motion.div initial="hidden" animate="visible" transition={{ staggerChildren: 0.08 }} className="relative z-10">
-            <motion.div variants={reveal} className="mb-7 flex items-center gap-3"><span className="h-px w-8 bg-signal" /><span className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground">LOCAL-FIRST MODEL ROBUSTNESS LAB</span></motion.div>
-            <motion.h1 variants={reveal} className="max-w-4xl text-[clamp(3.5rem,8vw,8.6rem)] font-semibold leading-[0.82] tracking-[-0.075em]">
-              Break the model<span className="text-signal">.</span><br />Before the road does<span className="text-alert">.</span>
-            </motion.h1>
-          </motion.div>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.45, duration: 0.7 }} className="relative z-10 mt-10 flex flex-col justify-end md:mt-28 md:pl-12">
-            <div className="max-w-md border-l border-border pl-5">
-              <p className="text-base leading-7 text-muted-foreground">Upload one detector and one video. CVFuzz runs every frame through nine realistic degradations, then shows you exactly where detection confidence gives way.</p>
-              <div className="mt-7 flex flex-wrap items-center gap-4">
-                <a href="#run" className="flex items-center gap-2 text-sm font-semibold">Start a run <ArrowDown className="size-4" /></a>
-                <span className="font-mono text-[9px] text-muted-foreground">NO CLOUD REQUIRED</span>
-              </div>
-            </div>
-          </motion.div>
-        </section>
-
-        <RunSetup model={model} video={video} onModel={setModel} onVideo={handleVideo} onRun={handleRun} running={running} progress={progress} progressLabel={progressLabel} error={error} />
-
-        <div className="mt-5 flex items-center justify-between font-mono text-[9px] text-muted-foreground">
-          <span className="flex items-center gap-2"><Sparkles className="size-3 text-signal" /> {runMode === "sample" ? "SHOWING A SYNTHETIC SAMPLE RUN" : runMode === "preview" ? "LOCAL PREVIEW COMPLETE" : "API RUN ACCEPTED"}</span>
-          {runMode !== "sample" && <button type="button" onClick={reset} className="flex items-center gap-1.5 transition-colors hover:text-foreground"><RotateCcw className="size-3" /> RESET</button>}
-        </div>
-
-        <VideoWall videoUrl={videoUrl} videoName={video?.name ?? null} />
-        <MetricsPanel />
-      </main>
-      <footer className="border-t border-border">
-        <div className="mx-auto flex max-w-[1500px] flex-col justify-between gap-4 px-4 py-8 sm:flex-row sm:items-center sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3"><span className="logo-mark scale-75" aria-hidden="true"><i /><i /><i /></span><span className="text-xs font-bold">CVFUZZ</span><span className="font-mono text-[9px] text-muted-foreground">/ BUILT FOR MODELS THAT LEAVE THE LAB</span></div>
-          <a href="https://github.com" className="flex items-center gap-2 font-mono text-[9px] text-muted-foreground transition-colors hover:text-foreground"><Code2 className="size-3.5" /> VIEW SOURCE</a>
-        </div>
-      </footer>
+    <div className="min-h-screen bg-background text-foreground">
+      <Header onNewRun={newRun} />
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] lg:grid-cols-[280px_minmax(0,1fr)]">
+        <RunsSidebar runs={runs} selectedId={selectedId} loading={loadingRuns} onSelect={(id) => void selectRun(id)} onRefresh={() => void refreshRuns()} onNewRun={newRun} />
+        <main className="min-w-0 px-4 sm:px-6 xl:px-8">
+          {selectedRun ? <ActiveRun key={selectedRun.id} run={selectedRun} /> : <RunSetup model={model} video={video} transforms={transforms} onModel={setModel} onVideo={setVideo} onRun={() => void handleRun()} running={running} progress={progress} progressLabel={progressLabel} error={error} />}
+          {error && selectedRun && <div className="fixed bottom-5 right-5 z-50 flex max-w-md items-start gap-3 border border-alert/40 bg-card p-4 shadow-xl"><AlertTriangle className="mt-0.5 size-4 shrink-0 text-alert" /><div><p className="text-xs font-semibold">API error</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{error}</p></div></div>}
+        </main>
+      </div>
+      <footer className="border-t border-border px-6 py-5 lg:ml-[280px]"><div className="flex flex-wrap items-center justify-between gap-3 font-mono text-[8px] text-muted-foreground"><span className="flex items-center gap-2"><FlaskConical className="size-3" /> CVFUZZ FULL-STREAM ROBUSTNESS LAB</span><span className="flex items-center gap-2"><Film className="size-3" /> OUTPUTS STORED LOCALLY</span></div></footer>
     </div>
   )
 }

@@ -2,9 +2,13 @@
 
 **Find what breaks your computer vision model automatically.**
 
-CVFuzz is a local-first robustness testing tool for computer vision models. It applies
-realistic, parameterized transformations and searches for the smallest change that destabilizes
-each object detected in an image or video.
+CVFuzz is a local-first robustness testing tool for computer vision models. Its primary web
+workflow takes one model and one video, creates one full-length video per configured
+augmentation, applies the model to the original and every transformed frame, and exposes the
+playable outputs plus robustness metrics as persistent runs.
+
+The original CLI boundary-search workflow remains available for finding the smallest change
+that destabilizes a specific object.
 
 Instead of reporting only that motion blur reduces accuracy, CVFuzz aims to answer questions
 such as:
@@ -18,6 +22,12 @@ models.
 
 ## Current capabilities
 
+- Upload a model and video through the local web application.
+- Apply all nine configured transformations to every decoded video frame.
+- Run inference on the original and every augmented stream.
+- Render ten annotated videos: one original plus nine augmentation outputs.
+- Persist uploads, progress, per-frame JSONL, metrics, and artifacts without a database.
+- Browse past runs, synchronized videos, failures, confidence, and retention in the frontend.
 - Run YOLO `.pt` models against images, image directories, and videos.
 - Use the original prediction as a metamorphic reference when annotations are unavailable.
 - Detect missed objects, confidence collapse, class changes, and localization drift.
@@ -38,25 +48,25 @@ The initial transformation set includes:
 - Target-aware partial occlusion
 - Glare
 
-## How it works
+## How the web workflow works
 
 ```text
-model + image/video
+model + video
         │
         ▼
-baseline detections
+baseline inference on every frame
         │
         ▼
-parameterized transformations
+9 configured frame transformations
         │
         ▼
-transformed inference + object matching
+9 transformed inference passes per frame
         │
         ▼
-failure detection
+annotated original + augmented MP4s
         │
         ▼
-minimum breaking boundary + reproducible artifacts
+file-backed run + metrics + synchronized UI
 ```
 
 Without ground-truth annotations, a changed prediction represents model instability rather than
@@ -104,13 +114,21 @@ See the [backend documentation](backend/README.md) for package and configuration
 
 ## Web interface
 
-The [frontend](frontend/README.md) provides the model/video upload workflow, synchronized
-original and augmentation video wall, light and dark themes, run progress, and comparison
-metrics. Until the Python engine gains an HTTP and video-rendering layer, it uses a clearly
-labeled local preview workflow and a typed API adapter for the future `POST /v1/runs` endpoint.
+The [frontend](frontend/README.md) provides the model/video upload workflow, persistent run
+sidebar, synchronized original and augmentation video wall, run progress, and real comparison
+metrics. Start the Python API first:
+
+```bash
+cd backend
+source .venv/bin/activate
+cvfuzz serve
+```
+
+Then start the frontend in another terminal:
 
 ```bash
 cd frontend
+cp .env.example .env.local
 npm install
 npm run dev
 ```
@@ -119,7 +137,8 @@ npm run dev
 
 Each transformation identifies one ordered `search_parameter`. Other parameters can contain
 multiple values, creating independent variants. For example, this configuration searches the
-minimum breaking kernel size separately for three motion directions:
+minimum breaking kernel size separately for three motion directions. `render_parameters`
+selects the single variant used for the full-length web output:
 
 ```yaml
 transforms:
@@ -127,6 +146,7 @@ transforms:
     enabled: true
     search_parameter: kernel_size
     identity_value: 1
+    render_parameters: {kernel_size: 11, angle_degrees: 45}
     parameters:
       kernel_size:
         values: [3, 5, 7, 9, 11, 15, 21]
@@ -148,22 +168,27 @@ The complete starting configuration is available in
 [`backend/configs/default.yaml`](backend/configs/default.yaml). A smaller end-to-end test profile
 is available in [`backend/configs/smoke.yaml`](backend/configs/smoke.yaml).
 
-## Run artifacts
+## Full-stream run artifacts
 
 CVFuzz stores each run in a self-contained directory:
 
 ```text
-.cvfuzz/runs/<run-id>/
+.cvfuzz/web-runs/<run-id>/
+├── inputs/
+├── artifacts/
+│   ├── original.mp4
+│   ├── exposure.mp4
+│   └── ...
 ├── config.yaml
 ├── manifest.json
-├── results.jsonl
-├── summary.json
-└── failures/
+├── events.jsonl
+├── frames.jsonl
+├── metrics.json
+└── artifacts.json
 ```
 
-The run configuration, transformation seed, model identity, input path, boundary parameters,
-baseline prediction, transformed prediction, failure classification, and saved image location
-are recorded for reproducibility.
+The older boundary-search `cvfuzz run` command continues to write `results.jsonl`,
+`summary.json`, and failure images under its configured output directory.
 
 ## Development
 
@@ -175,9 +200,9 @@ pytest
 pytest --cov=cvfuzz --cov-report=term-missing
 ```
 
-The current suite covers YAML validation and expansion, image-transformation contracts,
-deterministic augmentation, failure classification, boundary refinement, and end-to-end local
-artifact generation.
+The current suite covers YAML validation, image transformations, failure classification,
+boundary refinement, full-stream rendering, file persistence, multipart API runs, and range
+requests for playable artifacts.
 
 ## Repository structure
 
@@ -200,13 +225,11 @@ CVFuzz/
 
 ## Roadmap
 
-- Multi-frame video sampling controls and automatic empty-frame skipping
 - Annotated datasets and ground-truth evaluation
 - Combination and stochastic transformation search
-- Detection overlays, HTML reports, and shareable failure cards
+- HTML reports and shareable failure cards
 - Model and run comparison
 - Additional model formats and task adapters
-- Backend HTTP API and full-length annotated video rendering
 - CI robustness policies and regression gates
 
 ## License note
