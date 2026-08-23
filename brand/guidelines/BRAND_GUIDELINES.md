@@ -66,10 +66,13 @@ counterweight.
 | --- | --- | --- |
 | [`cvfuzz-logo-light.png`](../logos/cvfuzz-logo-light.png) | Primary horizontal lockup on white or very light neutral surfaces | Transparent PNG, 2172 × 724 px |
 | [`cvfuzz-logo-dark.png`](../logos/cvfuzz-logo-dark.png) | Approved horizontal lockup for dark fields and dark photography | Transparent PNG, 2172 × 724 px |
+| [`cvfuzz-symbol-light.svg`](../logos/cvfuzz-symbol-light.svg) and [`cvfuzz-symbol-light.png`](../logos/cvfuzz-symbol-light.png) | Compact symbol on white or very light neutral surfaces | SVG or transparent PNG, square |
+| [`cvfuzz-symbol-dark.svg`](../logos/cvfuzz-symbol-dark.svg) and [`cvfuzz-symbol-dark.png`](../logos/cvfuzz-symbol-dark.png) | Compact symbol on dark fields and dark imagery | SVG or transparent PNG, square |
 
-These are the only approved horizontal logo assets. Do not create improvised monochrome,
-symbol-only, or favicon versions by recoloring or cropping either PNG. Additional variants should
-be drawn and approved as a coordinated asset set.
+The horizontal lockups remain the only approved full-logo assets. The four symbol files above are
+the approved compact variants; use SVG where scalability matters and PNG where raster is required.
+Do not create improvised monochrome or favicon versions by recoloring or cropping either master
+PNG. Additional variants should be drawn and approved as a coordinated asset set.
 
 ### Clear space
 
@@ -86,8 +89,8 @@ required clear space around the visible artwork.
 - **Print:** do not reproduce it below **38 mm wide**.
 - **Recommended documentation width:** **280–480 px**.
 
-Below the minimum width, use the CVFuzz name as live text until an approved symbol-only asset is
-available. Never crop the symbol out of the master PNG as a shortcut.
+Below the minimum width, use the appropriate approved `cvfuzz-symbol-*` asset or the CVFuzz name
+as live text. Never crop the symbol out of the master PNG as a shortcut.
 
 ### Placement
 

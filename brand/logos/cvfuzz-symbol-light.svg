@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 620" role="img" aria-labelledby="title desc">
+  <title id="title">CVFuzz symbol for light surfaces</title>
+  <desc id="desc">A computer-vision frame enclosing a target, with a lime transformation boundary.</desc>
+  <g fill="#0B0E12">
+    <path d="M92 94h154v56H148v91H92z"/>
+    <path d="M374 94h154v147h-56v-91h-98z"/>
+    <path d="M92 379h56v91h98v56H92z"/>
+    <path d="M472 379h56v147H374v-56h98z"/>
+    <rect x="245" y="230" width="130" height="130" rx="10"/>
+  </g>
+  <g fill="#D7FA03">
+    <path d="M452 94h28v25h25v30h-25v27h-28v-27h-26v-30h26z"/>
+    <path d="M425 177h55v28h-28v28h-27z"/>
+    <path d="M490 379h38v147h-154v-56h98v-91h18z"/>
+    <path d="M342 470h130v22H342z"/>
+    <circle cx="322" cy="481" r="11"/>
+    <circle cx="297" cy="493" r="8"/>
+    <circle cx="274" cy="503" r="6"/>
+    <rect x="198" y="203" width="42" height="17" rx="8"/>
+    <rect x="254" y="203" width="42" height="17" rx="8"/>
+    <rect x="310" y="203" width="42" height="17" rx="8"/>
+    <rect x="380" y="203" width="17" height="42" rx="8"/>
+    <rect x="380" y="259" width="17" height="42" rx="8"/>
+    <rect x="380" y="315" width="17" height="42" rx="8"/>
+    <rect x="198" y="370" width="42" height="17" rx="8"/>
+    <rect x="254" y="370" width="42" height="17" rx="8"/>
+    <rect x="310" y="370" width="42" height="17" rx="8"/>
+    <rect x="181" y="203" width="17" height="42" rx="8"/>
+    <rect x="181" y="259" width="17" height="42" rx="8"/>
+    <rect x="181" y="315" width="17" height="42" rx="8"/>
+    <path d="M198 203h18v17h-18zm154 0h28v17h-28zm-171 154h17v13h18v17h-35zm171 13h28v17h-28z"/>
+  </g>
+</svg>
