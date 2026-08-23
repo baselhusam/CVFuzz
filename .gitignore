@@ -1,0 +1,9 @@
+.DS_Store
+backend/.venv/
+backend/.cvfuzz/
+backend/**/__pycache__/
+backend/.pytest_cache/
+backend/.ruff_cache/
+backend/.coverage
+backend/test-assets/
+backend/test-runs/
