@@ -671,7 +671,7 @@
     }
 
     .background-card.photo-field {
-      background: url("assets/cvfuzz-divider-fog.png") 42% center / cover no-repeat;
+      background: url("../assets/cvfuzz-divider-fog.png") 42% center / cover no-repeat;
     }
 
     .background-card > img {
@@ -1062,7 +1062,7 @@
     .application-image {
       position: absolute;
       inset: 0 0 0 32%;
-      background: url("assets/cvfuzz-workstation-mockup.png") center / cover no-repeat;
+      background: url("../assets/cvfuzz-workstation-mockup.png") center / cover no-repeat;
     }
 
     .application-page::after {
@@ -1080,11 +1080,13 @@
       padding: 0.78in 0 0 var(--pad-x);
     }
 
-    .application-copy .brand-plate {
+    .application-copy .brand-plate,
+    .application-copy .theme-logo {
       margin-top: 28px;
     }
 
-    .application-copy .brand-plate img {
+    .application-copy .brand-plate img,
+    .application-copy .theme-logo {
       width: 220px;
     }
 
@@ -1284,7 +1286,7 @@
     }
 
     .closing-page {
-      background: url("assets/cvfuzz-boundary-cover.png") center / cover no-repeat;
+      background: url("../assets/cvfuzz-boundary-cover.png") center / cover no-repeat;
       color: var(--paper);
     }
 
@@ -1302,8 +1304,22 @@
       padding: 0.66in;
     }
 
-    .closing-content .brand-plate {
+    .closing-content .brand-plate,
+    .closing-content .theme-logo {
       margin-bottom: 0.52in;
+    }
+
+    .closing-content .theme-logo {
+      width: 272px;
+    }
+
+    .theme-logo {
+      display: block;
+      height: auto;
+    }
+
+    .mast .theme-logo {
+      width: 190px;
     }
 
     .closing-content .display-lg {
@@ -1356,9 +1372,9 @@
 </head>
 <body>
   <!-- 01 / Cover -->
-  <section class="page image-page" style="background-image: url('assets/cvfuzz-boundary-cover.png');">
+  <section class="page image-page" style="background-image: url('../assets/cvfuzz-boundary-cover.png');">
     <div class="mast">
-      <div class="brand-plate"><img src="../../frontend/public/brand/cvfuzz-logo.png" alt="CVFuzz"></div>
+      <img class="theme-logo mast-logo" src="../logos/cvfuzz-logo-dark.png" alt="CVFuzz dark-background logo">
     </div>
     <div class="divider-copy">
       <p class="eyebrow">Identity system / Version 1.0</p>
@@ -1410,7 +1426,7 @@
   </section>
 
   <!-- 04 / Fog divider -->
-  <section class="page image-page" style="background-image: url('assets/cvfuzz-divider-fog.png'); background-position: center;">
+  <section class="page image-page" style="background-image: url('../assets/cvfuzz-divider-fog.png'); background-position: center;">
     <div class="divider-copy" style="left: auto; right: 0.72in; width: 4.75in; bottom: 1.12in;">
       <p class="eyebrow">Transformation 01 / Fog</p>
       <h2 class="display-lg">Visibility is a variable.</h2>
@@ -1428,12 +1444,12 @@
       <h2 class="display-md">One mark. One source of truth.</h2>
       <p class="body-copy" style="max-width: 7.2in; margin: 13px 0 22px;">Use the supplied horizontal lockup exactly as provided. It combines the detection symbol and custom wordmark in their approved relationship.</p>
       <div class="logo-stage">
-        <img class="official-logo" src="../../frontend/public/brand/cvfuzz-logo.png" alt="CVFuzz official horizontal logo">
+        <img class="official-logo" src="../logos/cvfuzz-logo-light.png" alt="CVFuzz light-surface horizontal logo">
       </div>
       <dl class="asset-specs">
-        <div class="asset-spec"><dt>Current master</dt><dd>Transparent PNG<br>2172 x 724 px</dd></div>
+        <div class="asset-spec"><dt>Light master</dt><dd>PNG / 2172 x 724 px</dd></div>
         <div class="asset-spec"><dt>Approved surface</dt><dd>White or CVFuzz Paper</dd></div>
-        <div class="asset-spec"><dt>Production note</dt><dd>Vector and reverse variants remain part of the asset roadmap.</dd></div>
+        <div class="asset-spec"><dt>Dark master</dt><dd>Dark fields / 2172 x 724 px</dd></div>
       </dl>
     </div>
     <div class="page-footer"><span>Official asset only</span><span>Logo / Master lockup</span></div>
@@ -1447,7 +1463,7 @@
       <h2 class="display-md">Order meets disruption.</h2>
       <p class="body-copy" style="max-width: 7in; margin: 12px 0 20px;">The mark holds four ideas in one continuous lockup. The full logo remains visible throughout this explanation - no cropped or improvised variants.</p>
       <div class="anatomy-stage">
-        <img class="official-logo" src="../../frontend/public/brand/cvfuzz-logo.png" alt="Annotated CVFuzz logo">
+        <img class="official-logo" src="../logos/cvfuzz-logo-light.png" alt="Annotated CVFuzz logo">
         <div class="callout c1"><strong>Detection frame</strong>Computer-vision region of interest.</div>
         <div class="callout c2"><strong>Object target</strong>The individual detection under test.</div>
         <div class="callout c3"><strong>Signal boundary</strong>The smallest controlled break in stability.</div>
@@ -1465,11 +1481,11 @@
         <div><p class="eyebrow">Clear space and scale</p><h2 class="display-md">Give the signal room.</h2></div>
         <p class="body-copy">Define x as the height of the lime bar above the F. Protect at least 1x on every side; use 2x for covers and hero moments.</p>
       </div>
-      <div class="safe-zone"><img class="official-logo" src="../../frontend/public/brand/cvfuzz-logo.png" alt="CVFuzz clear space example"></div>
+      <div class="safe-zone"><img class="official-logo" src="../logos/cvfuzz-logo-light.png" alt="CVFuzz clear space example"></div>
       <div class="scale-row">
-        <div class="scale-sample s1"><img src="../../frontend/public/brand/cvfuzz-logo.png" alt="Hero scale"><span>Hero / 420 px and above</span></div>
-        <div class="scale-sample s2"><img src="../../frontend/public/brand/cvfuzz-logo.png" alt="Documentation scale"><span>Documentation / 280 px</span></div>
-        <div class="scale-sample s3"><img src="../../frontend/public/brand/cvfuzz-logo.png" alt="Minimum scale"><span>Digital minimum / 180 px</span></div>
+        <div class="scale-sample s1"><img src="../logos/cvfuzz-logo-light.png" alt="Hero scale"><span>Hero / 420 px and above</span></div>
+        <div class="scale-sample s2"><img src="../logos/cvfuzz-logo-light.png" alt="Documentation scale"><span>Documentation / 280 px</span></div>
+        <div class="scale-sample s3"><img src="../logos/cvfuzz-logo-light.png" alt="Minimum scale"><span>Digital minimum / 180 px</span></div>
       </div>
     </div>
     <div class="page-footer"><span>Never trim away required clear space</span><span>Logo / Clear space</span></div>
@@ -1481,14 +1497,14 @@
     <div class="page-pad" style="padding-top: 0.93in;">
       <p class="eyebrow">Background behavior</p>
       <h2 class="display-md">The right logo, every time.</h2>
-      <p class="body-copy" style="margin: 12px 0 24px; max-width: 7.5in;">The current logo is designed for light surfaces. On dark or photographic fields, use a properly spaced Paper plate. Never place the dark wordmark directly over a dark image.</p>
+      <p class="body-copy" style="margin: 12px 0 24px; max-width: 7.5in;">Use the light logo on white and CVFuzz Paper. Use the approved dark logo on dark fields and dark imagery. Preserve the required clear space and choose a quiet area of the image.</p>
       <div class="background-grid">
-        <div class="background-card"><img src="../../frontend/public/brand/cvfuzz-logo.png" alt="Logo on white"><span class="approval">Approved / White</span></div>
-        <div class="background-card paper"><img src="../../frontend/public/brand/cvfuzz-logo.png" alt="Logo on Paper"><span class="approval">Approved / Paper</span></div>
-        <div class="background-card dark-field"><div class="brand-plate compact"><img src="../../frontend/public/brand/cvfuzz-logo.png" alt="Logo on a Paper plate over dark"></div><span class="approval">Approved / Plate</span></div>
-        <div class="background-card photo-field"><div class="brand-plate compact"><img src="../../frontend/public/brand/cvfuzz-logo.png" alt="Logo on a Paper plate over photography"></div><span class="approval">Approved / Plate</span></div>
+        <div class="background-card"><img src="../logos/cvfuzz-logo-light.png" alt="Light logo on white"><span class="approval">Approved / White</span></div>
+        <div class="background-card paper"><img src="../logos/cvfuzz-logo-light.png" alt="Light logo on Paper"><span class="approval">Approved / Paper</span></div>
+        <div class="background-card dark-field"><img src="../logos/cvfuzz-logo-dark.png" alt="Dark logo on dark"><span class="approval">Approved / Dark</span></div>
+        <div class="background-card photo-field"><img src="../logos/cvfuzz-logo-dark.png" alt="Dark logo on dark photography"><span class="approval">Approved / Dark</span></div>
       </div>
-      <p class="micro" style="margin-top: 16px;">Do not recolor the logo. Do not generate a reverse version. Do not remove the Paper plate until an approved reverse asset exists.</p>
+      <p class="micro" style="margin-top: 16px;">Do not recolor either logo. Use the supplied light or dark asset - never create a reverse version by editing the file.</p>
     </div>
     <div class="page-footer"><span>Surface control protects recognition</span><span>Logo / Backgrounds</span></div>
   </section>
@@ -1551,7 +1567,7 @@
   </section>
 
   <!-- 12 / Motion divider -->
-  <section class="page image-page" style="background-image: url('assets/cvfuzz-divider-motion-blur.png'); background-position: center;">
+  <section class="page image-page" style="background-image: url('../assets/cvfuzz-divider-motion-blur.png'); background-position: center;">
     <div class="divider-copy">
       <p class="eyebrow">Transformation 02 / Motion blur</p>
       <h2 class="display-lg">Movement has a boundary.</h2>
@@ -1641,7 +1657,7 @@ status     confidence_collapse</pre>
   </section>
 
   <!-- 17 / Sensor divider -->
-  <section class="page image-page" style="background-image: url('assets/cvfuzz-divider-sensor-noise.png'); background-position: center;">
+  <section class="page image-page" style="background-image: url('../assets/cvfuzz-divider-sensor-noise.png'); background-position: center;">
     <div class="divider-copy">
       <p class="eyebrow">Transformation 03 / Low light</p>
       <h2 class="display-lg">Signal becomes noise.</h2>
@@ -1657,18 +1673,18 @@ status     confidence_collapse</pre>
     <div class="page-pad" style="padding-top: 0.9in;">
       <div class="split" style="align-items: end; margin-bottom: 20px;"><div><p class="eyebrow">Art direction</p><h2 class="display-md">Evidence, made cinematic.</h2></div><p class="body-copy">Deep blacks, realistic transformations, restrained overlays, and one Signal Lime focal point.</p></div>
       <div class="image-grid">
-        <figure class="image-tile"><img src="assets/cvfuzz-workstation-mockup.png" alt="CVFuzz product workstation concept"><figcaption>Product in context</figcaption></figure>
-        <figure class="image-tile"><img src="assets/cvfuzz-divider-fog.png" alt="Fog transformation concept"><figcaption>Visibility loss</figcaption></figure>
-        <figure class="image-tile"><img src="assets/cvfuzz-divider-motion-blur.png" alt="Motion blur transformation concept"><figcaption>Measured motion</figcaption></figure>
-        <figure class="image-tile"><img src="assets/cvfuzz-divider-occlusion.png" alt="Occlusion transformation concept"><figcaption>Target-aware occlusion</figcaption></figure>
-        <figure class="image-tile"><img src="assets/cvfuzz-divider-sensor-noise.png" alt="Sensor noise transformation concept"><figcaption>Signal threshold</figcaption></figure>
+        <figure class="image-tile"><img src="../assets/cvfuzz-workstation-mockup.png" alt="CVFuzz product workstation concept"><figcaption>Product in context</figcaption></figure>
+        <figure class="image-tile"><img src="../assets/cvfuzz-divider-fog.png" alt="Fog transformation concept"><figcaption>Visibility loss</figcaption></figure>
+        <figure class="image-tile"><img src="../assets/cvfuzz-divider-motion-blur.png" alt="Motion blur transformation concept"><figcaption>Measured motion</figcaption></figure>
+        <figure class="image-tile"><img src="../assets/cvfuzz-divider-occlusion.png" alt="Occlusion transformation concept"><figcaption>Target-aware occlusion</figcaption></figure>
+        <figure class="image-tile"><img src="../assets/cvfuzz-divider-sensor-noise.png" alt="Sensor noise transformation concept"><figcaption>Signal threshold</figcaption></figure>
       </div>
     </div>
     <div class="page-footer"><span>Transformation-led, never generic AI imagery</span><span>Imagery / Direction</span></div>
   </section>
 
   <!-- 19 / Occlusion divider -->
-  <section class="page image-page" style="background-image: url('assets/cvfuzz-divider-occlusion.png'); background-position: center;">
+  <section class="page image-page" style="background-image: url('../assets/cvfuzz-divider-occlusion.png'); background-position: center;">
     <div class="divider-copy" style="left: auto; right: 0.72in; width: 4.75in;">
       <p class="eyebrow">Transformation 04 / Occlusion</p>
       <h2 class="display-lg">Hide less. Learn more.</h2>
@@ -1685,7 +1701,7 @@ status     confidence_collapse</pre>
       <p class="eyebrow">Application / Platform</p>
       <h2 class="display-lg">The interface is the evidence.</h2>
       <p class="lede" style="margin-top: 22px;">Frames, detections, parameter sweeps, and failure boundaries carry the identity. The logo appears once; the work stays central.</p>
-      <div class="brand-plate"><img src="../../frontend/public/brand/cvfuzz-logo.png" alt="CVFuzz on approved Paper plate"></div>
+      <img class="theme-logo" src="../logos/cvfuzz-logo-dark.png" alt="CVFuzz dark-background logo">
       <p class="micro" style="margin-top: 14px; color: var(--steel);">Conceptual application mockup / not final UI</p>
     </div>
     <div class="page-footer no-rule" style="z-index: 4;"><span>Product in context</span><span>20</span></div>
@@ -1710,7 +1726,7 @@ status     confidence_collapse</pre>
   </section>
 
   <!-- 22 / Boundary divider -->
-  <section class="page image-page" style="background-image: url('assets/cvfuzz-boundary-cover.png'); background-position: center;">
+  <section class="page image-page" style="background-image: url('../assets/cvfuzz-boundary-cover.png'); background-position: center;">
     <div class="divider-copy">
       <p class="eyebrow">From identity to product</p>
       <h2 class="display-lg">Stable DNA.<br>Flexible system.</h2>
@@ -1745,7 +1761,7 @@ status     confidence_collapse</pre>
       <h2 class="display-md">Grow one system, not many.</h2>
       <div class="roadmap">
         <div class="roadmap-column"><span class="phase">Now</span><h3>Foundation</h3><ol><li>Approved master lockup</li><li>Editable HTML brand book</li><li>Core color system</li><li>Voice and imagery</li></ol></div>
-        <div class="roadmap-column"><span class="phase" style="color: var(--steel);">Next</span><h3>Production set</h3><ol><li>Redrawn vector master</li><li>Approved reverse lockup</li><li>Monochrome versions</li><li>Symbol and favicon family</li></ol></div>
+        <div class="roadmap-column"><span class="phase" style="color: var(--steel);">Next</span><h3>Production set</h3><ol><li>Redrawn vector masters</li><li>Monochrome versions</li><li>Symbol and favicon family</li><li>Export presets</li></ol></div>
         <div class="roadmap-column"><span class="phase" style="color: var(--steel);">Later</span><h3>Product system</h3><ol><li>Semantic UI tokens</li><li>Component library</li><li>Data palette</li><li>Motion language</li></ol></div>
       </div>
       <p class="body-copy" style="margin-top: 28px; max-width: 8.2in;">Do not auto-trace the PNG and call it final. Production variants must be redrawn cleanly, compared against the approved master, and released as one coordinated family.</p>
@@ -1756,7 +1772,7 @@ status     confidence_collapse</pre>
   <!-- 25 / Closing -->
   <section class="page closing-page">
     <div class="closing-content">
-      <div class="brand-plate"><img src="../../frontend/public/brand/cvfuzz-logo.png" alt="CVFuzz"></div>
+      <img class="theme-logo" src="../logos/cvfuzz-logo-dark.png" alt="CVFuzz dark-background logo">
       <p class="eyebrow">Brand essence</p>
       <h2 class="display-lg">Controlled distortion.<br>Clear evidence.</h2>
       <p class="lede">Find what breaks. Know exactly where. Make every result reproducible.</p>

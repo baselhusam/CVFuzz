@@ -5,13 +5,13 @@
 they are documented separately.
 
 **Professional visual edition:**
-[`CVFuzz_Brand_Guidelines.pdf`](../../output/pdf/CVFuzz_Brand_Guidelines.pdf)
+[`CVFuzz_Brand_Guidelines.pdf`](../../../output/pdf/CVFuzz_Brand_Guidelines.pdf)
 
 **Editable publication source:**
 [`CVFuzz_Brand_Guidelines.html`](CVFuzz_Brand_Guidelines.html)
 
 <p align="center">
-  <img src="../../frontend/public/brand/cvfuzz-logo.png" alt="CVFuzz logo" width="720">
+  <img src="../logos/cvfuzz-logo-light.png" alt="CVFuzz light-surface logo" width="720">
 </p>
 
 CVFuzz finds the smallest realistic change that destabilizes a computer-vision model. Its brand
@@ -60,15 +60,16 @@ The symbol combines four ideas:
 The wordmark is intentionally heavy and geometric, giving the experimental symbol a stable
 counterweight.
 
-### Approved master logo
+### Approved logo assets
 
 | Asset | Use | Format |
 | --- | --- | --- |
-| [`cvfuzz-logo.png`](../../frontend/public/brand/cvfuzz-logo.png) | Primary horizontal lockup on white or very light neutral surfaces | Transparent PNG, 2172 × 724 px |
+| [`cvfuzz-logo-light.png`](../logos/cvfuzz-logo-light.png) | Primary horizontal lockup on white or very light neutral surfaces | Transparent PNG, 2172 × 724 px |
+| [`cvfuzz-logo-dark.png`](../logos/cvfuzz-logo-dark.png) | Approved horizontal lockup for dark fields and dark photography | Transparent PNG, 2172 × 724 px |
 
-This is currently the only approved logo asset. Do not create an improvised reversed, monochrome,
-symbol-only, or favicon version by recoloring or cropping the PNG. Those variants should be drawn
-and approved as a coordinated asset set.
+These are the only approved horizontal logo assets. Do not create improvised monochrome,
+symbol-only, or favicon versions by recoloring or cropping either PNG. Additional variants should
+be drawn and approved as a coordinated asset set.
 
 ### Clear space
 
@@ -97,16 +98,15 @@ available. Never crop the symbol out of the master PNG as a shortcut.
 
 ### Backgrounds
 
-Use the current master logo only on:
+Use the light logo only on:
 
 - white;
 - CVFuzz Paper;
 - quiet, nearly white neutral surfaces;
 - very light imagery with a clean, low-detail area behind the full lockup.
 
-Do not place it directly on dark, saturated, photographic, or high-detail backgrounds. Until an
-approved reverse logo exists, place the master logo on a solid light panel with the required clear
-space.
+Use the approved dark logo on dark fields and dark photography, choosing a quiet area that retains
+the required clear space. Do not place either logo on busy or low-contrast imagery.
 
 ### Incorrect use
 
