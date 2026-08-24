@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, useState } from "react"
-import { FileArchive, Film, Upload, X } from "lucide-react"
+import { Check, Film, Package, Upload, X } from "lucide-react"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { formatBytes } from "@/lib/run-data"
@@ -14,18 +14,18 @@ type FileDropzoneProps = {
 
 const copy = {
   model: {
-    eyebrow: "01 / MODEL",
-    title: "Drop your detector",
-    note: "Ultralytics or exported weights",
+    eyebrow: "01 / Model",
+    title: "Add your detector",
+    note: "Ultralytics weights or an exported runtime",
     accept: ".pt,.onnx,.engine",
-    types: "PT, ONNX, ENGINE",
+    types: ".PT  .ONNX  .ENGINE",
   },
   video: {
-    eyebrow: "02 / SOURCE",
-    title: "Drop your test video",
-    note: "The entire stream will be evaluated",
+    eyebrow: "02 / Evidence source",
+    title: "Add a test video",
+    note: "Every frame is evaluated and preserved",
     accept: "video/mp4,video/quicktime,video/webm,.mkv",
-    types: "MP4, MOV, WEBM, MKV",
+    types: "MP4  MOV  WEBM  MKV",
   },
 }
 
@@ -33,7 +33,7 @@ export function FileDropzone({ kind, file, onFile }: FileDropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
   const details = copy[kind]
-  const Icon = kind === "model" ? FileArchive : Film
+  const Icon = kind === "model" ? Package : Film
 
   const takeFile = (next?: File) => {
     if (next) onFile(next)
@@ -51,8 +51,8 @@ export function FileDropzone({ kind, file, onFile }: FileDropzoneProps) {
         takeFile(event.dataTransfer.files[0])
       }}
       className={cn(
-        "group relative min-h-56 overflow-hidden border bg-card p-5 transition-colors",
-        dragging ? "border-signal bg-signal-soft" : "border-border hover:border-foreground/35",
+        "corner-frame group relative min-h-60 overflow-hidden rounded-lg border bg-card transition-colors",
+        dragging ? "border-signal bg-signal-soft" : "border-border hover:border-white/20",
       )}
     >
       <input
@@ -62,29 +62,34 @@ export function FileDropzone({ kind, file, onFile }: FileDropzoneProps) {
         accept={details.accept}
         onChange={(event) => takeFile(event.target.files?.[0])}
       />
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-foreground/20 to-transparent" />
-      <div className="flex items-center justify-between font-mono text-[10px] tracking-[0.18em] text-muted-foreground">
+      {dragging && <span className="scan-line pointer-events-none absolute inset-x-0 top-0 h-px bg-signal" />}
+      <div className="flex items-center justify-between border-b border-border px-4 py-3 font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
         <span>{details.eyebrow}</span>
         <span>{details.types}</span>
       </div>
 
       {file ? (
-        <div className="flex h-43 flex-col justify-end">
-          <div className="mb-auto mt-7 flex size-12 items-center justify-center rounded-full bg-signal text-ink shadow-[0_0_0_7px_var(--signal-soft)]">
-            <Icon className="size-5" />
+        <div className="flex min-h-48 flex-col justify-between p-5">
+          <div className="flex items-center justify-between gap-4">
+            <span className="flex size-9 items-center justify-center rounded-md border border-stable/30 bg-stable/5 text-stable">
+              <Check className="size-4" />
+            </span>
+            <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-stable">Ready</span>
           </div>
-          <div className="flex items-end justify-between gap-4">
+          <div className="flex items-end justify-between gap-4 pt-10">
             <div className="min-w-0">
-              <p className="truncate text-lg font-semibold tracking-[-0.025em]">{file.name}</p>
-              <p className="mt-1 font-mono text-[11px] text-muted-foreground">{formatBytes(file.size)} · READY</p>
+              <p className="truncate text-[15px] font-medium tracking-[-0.02em]">{file.name}</p>
+              <p className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.08em] text-muted-foreground">
+                {formatBytes(file.size)} · local input
+              </p>
             </div>
             <button
               type="button"
-              className="flex size-8 shrink-0 items-center justify-center border border-border text-muted-foreground transition-colors hover:border-destructive/50 hover:text-destructive"
+              className="flex size-8 shrink-0 items-center justify-center rounded-md border border-input text-muted-foreground transition-colors hover:border-destructive/50 hover:bg-destructive/5 hover:text-destructive"
               onClick={() => onFile(null)}
               aria-label={`Remove ${kind} file`}
             >
-              <X className="size-4" />
+              <X className="size-3.5" />
             </button>
           </div>
         </div>
@@ -92,13 +97,20 @@ export function FileDropzone({ kind, file, onFile }: FileDropzoneProps) {
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          className="flex h-43 w-full flex-col items-start justify-end text-left"
+          className="flex min-h-48 w-full flex-col items-start justify-between p-5 text-left"
         >
-          <span className="mb-auto mt-7 flex size-12 items-center justify-center rounded-full border border-border bg-background transition-transform duration-300 group-hover:-translate-y-1">
-            <Upload className="size-5" />
+          <span className="flex size-10 items-center justify-center rounded-md border border-input bg-secondary text-muted-foreground transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-white/25 group-hover:text-foreground">
+            {dragging ? <Icon className="size-4" /> : <Upload className="size-4" />}
           </span>
-          <span className="text-lg font-semibold tracking-[-0.025em]">{details.title}</span>
-          <span className="mt-1 text-sm text-muted-foreground">{details.note}</span>
+          <span>
+            <span className="block text-[15px] font-medium tracking-[-0.02em]">
+              {dragging ? "Release to ingest" : details.title}
+            </span>
+            <span className="mt-1 block text-xs text-muted-foreground">{details.note}</span>
+            <span className="mt-3 block font-mono text-[9px] uppercase tracking-[0.1em] text-steel">
+              Drop here or <span className="text-foreground underline underline-offset-4">browse files</span>
+            </span>
+          </span>
         </button>
       )}
     </motion.div>

@@ -131,17 +131,3 @@ export const formatParameters = (parameters: Record<string, unknown>) =>
   Object.entries(parameters)
     .map(([key, value]) => `${key.replaceAll("_", " ")} ${String(value)}`)
     .join(" · ")
-
-const accents = [
-  "#9cec62",
-  "#ffb454",
-  "#9b8cff",
-  "#ff6b6b",
-  "#68a4ff",
-  "#f7ca55",
-  "#fb7fc1",
-  "#9bd6dc",
-  "#ff745e",
-]
-
-export const transformAccent = (index: number) => accents[index % accents.length]

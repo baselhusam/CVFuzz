@@ -1,29 +1,32 @@
 import type { Metadata } from "next"
-import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google"
+import localFont from "next/font/local"
 import { Providers } from "@/components/providers"
 import "./globals.css"
 
-const spaceGrotesk = Space_Grotesk({
+const spaceGrotesk = localFont({
+  src: "./fonts/SpaceGrotesk-Variable.ttf",
   variable: "--font-space-grotesk",
-  subsets: ["latin"],
+  display: "swap",
+  weight: "300 700",
 })
 
-const plexMono = IBM_Plex_Mono({
+const plexMono = localFont({
+  src: "./fonts/IBMPlexMono-Regular.ttf",
   variable: "--font-plex-mono",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  display: "swap",
+  weight: "400",
 })
 
 export const metadata: Metadata = {
-  title: "CVFuzz — Computer vision robustness lab",
-  description: "Run full-stream computer vision robustness tests across realistic augmentations.",
+  title: "CVFuzz — Failure boundary lab",
+  description: "Find the smallest realistic change that destabilizes your computer-vision model.",
 }
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${spaceGrotesk.variable} ${plexMono.variable} h-full antialiased`}
+      className={`${spaceGrotesk.variable} ${plexMono.variable} dark h-full`}
       suppressHydrationWarning
     >
       <body className="min-h-full"><Providers>{children}</Providers></body>
