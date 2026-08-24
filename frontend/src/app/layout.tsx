@@ -22,7 +22,12 @@ export const metadata: Metadata = {
   description: "See how real-world video changes affect your computer-vision model.",
 }
 
-export const viewport: Viewport = { themeColor: "#06080b" }
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f3f5ee" },
+    { media: "(prefers-color-scheme: dark)", color: "#06080b" },
+  ],
+}
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

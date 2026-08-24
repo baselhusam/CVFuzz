@@ -42,12 +42,46 @@
 }
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
   --cvf-ink: #0b0e12;
   --cvf-signal: #d7fa03;
   --cvf-paper: #f7f9f2;
   --cvf-mist: #e7ece3;
   --cvf-slate: #69737f;
+  --cvf-steel: #5e6873;
+
+  --background: #f3f5ee;
+  --foreground: #10141a;
+  --card: #fbfcf7;
+  --card-foreground: #10141a;
+  --popover: #ffffff;
+  --popover-foreground: #10141a;
+  --primary: #c4e400;
+  --primary-foreground: #0b0e12;
+  --secondary: #e9ede5;
+  --secondary-foreground: #10141a;
+  --muted: #e9ede5;
+  --muted-foreground: #66717b;
+  --accent: #dde3da;
+  --accent-foreground: #10141a;
+  --destructive: #c93749;
+  --border: rgba(11, 14, 18, 0.11);
+  --input: rgba(11, 14, 18, 0.17);
+  --ring: #718500;
+  --signal: #718500;
+  --signal-soft: rgba(113, 133, 0, 0.1);
+  --stable: #247a43;
+  --degraded: #9b5b00;
+  --failed: #c93749;
+  --queued: #69737f;
+  --grid-line: rgba(11, 14, 18, 0.045);
+  --frame-line: rgba(11, 14, 18, 0.22);
+  --skeleton-from: #e2e7df;
+  --skeleton-mid: #f2f4ed;
+}
+
+.dark {
+  color-scheme: dark;
   --cvf-steel: #96a0aa;
 
   --background: #06080b;
@@ -74,6 +108,10 @@
   --degraded: #f0a63c;
   --failed: #f45b69;
   --queued: #69737f;
+  --grid-line: rgba(255, 255, 255, 0.028);
+  --frame-line: rgba(255, 255, 255, 0.2);
+  --skeleton-from: #0b0e12;
+  --skeleton-mid: #141a21;
 }
 
 @layer base {
@@ -111,8 +149,8 @@
 
 .evidence-grid {
   background-image:
-    linear-gradient(rgba(255,255,255,.028) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,.028) 1px, transparent 1px);
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
   background-size: 32px 32px;
 }
 
@@ -128,8 +166,8 @@
 .corner-frame::before {
   left: 10px;
   top: 10px;
-  border-left: 2px solid rgba(255,255,255,.2);
-  border-top: 2px solid rgba(255,255,255,.2);
+  border-left: 2px solid var(--frame-line);
+  border-top: 2px solid var(--frame-line);
 }
 
 .corner-frame::after {
@@ -158,7 +196,7 @@
   box-shadow: 0 0 0 1px rgba(255,255,255,.24);
 }
 
-.scrollbar-thin { scrollbar-width: thin; scrollbar-color: #1a2129 transparent; }
+.scrollbar-thin { scrollbar-width: thin; scrollbar-color: var(--accent) transparent; }
 
 @keyframes signal-pulse {
   0%, 100% { opacity: 1; }
@@ -180,7 +218,7 @@
 .signal-pulse { animation: signal-pulse 1.4s ease-in-out infinite; }
 .scan-line { animation: scan-line 2.8s linear infinite; }
 .skeleton {
-  background: linear-gradient(90deg, #0b0e12 30%, #141a21 50%, #0b0e12 70%);
+  background: linear-gradient(90deg, var(--skeleton-from) 30%, var(--skeleton-mid) 50%, var(--skeleton-from) 70%);
   background-size: 220% 100%;
   animation: shimmer 1.6s linear infinite;
 }

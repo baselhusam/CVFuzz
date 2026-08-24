@@ -9,13 +9,18 @@ import {
   ChevronDown,
   CircleStop,
   LoaderCircle,
+  Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
   Pause,
   Play,
   Plus,
   RefreshCw,
+  Sun,
   Volume2,
   VolumeX,
 } from "lucide-react"
+import { useTheme } from "next-themes"
 import { FileDropzone } from "@/components/file-dropzone"
 import { MetricsPanel } from "@/components/metrics-panel"
 import { Badge } from "@/components/ui/badge"
@@ -47,17 +52,75 @@ const runDateFormatter = new Intl.DateTimeFormat(undefined, {
 
 const readableFileName = (name?: string) => name?.replace(/\.[^.]+$/, "").replaceAll("-", " ") || "Not available"
 
-function Header({ onNewRun, apiState }: { onNewRun: () => void; apiState: "connecting" | "online" | "offline" }) {
+function ThemeToggle() {
+  const { resolvedTheme, setTheme } = useTheme()
+
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <button
+            type="button"
+            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+            className="flex size-8 items-center justify-center rounded-md border border-border bg-secondary text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            aria-label="Toggle color theme"
+          />
+        }
+      >
+        <Moon className="size-3.5 dark:hidden" />
+        <Sun className="hidden size-3.5 dark:block" />
+      </TooltipTrigger>
+      <TooltipContent>
+        <span className="dark:hidden">Use dark theme</span>
+        <span className="hidden dark:inline">Use light theme</span>
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
+function Header({
+  onNewRun,
+  apiState,
+  sidebarCollapsed,
+  onToggleSidebar,
+}: {
+  onNewRun: () => void
+  apiState: "connecting" | "online" | "offline"
+  sidebarCollapsed: boolean
+  onToggleSidebar: () => void
+}) {
   const apiLabel = apiState === "online" ? "Ready" : apiState === "offline" ? "API unavailable" : "Connecting…"
   const apiTone = apiState === "online" ? "bg-stable" : apiState === "offline" ? "bg-failed" : "border border-queued"
   return (
-    <header className="sticky top-0 z-50 flex h-14 items-center gap-4 border-b border-border bg-card/95 px-4 backdrop-blur-xl sm:px-5">
-      <button type="button" onClick={onNewRun} className="flex shrink-0 items-center gap-2.5 rounded-md" aria-label="CVFuzz home">
-        <Image src="/brand/cvfuzz-symbol-dark.svg" alt="" width={24} height={24} priority />
-        <span className="text-[15px] font-semibold tracking-[-0.035em]">CVFuzz</span>
+    <header className="sticky top-0 z-50 flex h-14 items-center gap-3 border-b border-border bg-card/95 px-3 backdrop-blur-xl sm:px-4">
+      <button type="button" onClick={onNewRun} className="group flex shrink-0 items-center gap-2.5 rounded-md" aria-label="CVFuzz home">
+        <span className="relative flex size-8 items-center justify-center overflow-hidden rounded-md border border-border bg-secondary transition-colors group-hover:border-signal/50">
+          <Image src="/brand/cvfuzz-symbol-light.svg" alt="" width={23} height={23} className="dark:hidden" priority />
+          <Image src="/brand/cvfuzz-symbol-dark.svg" alt="" width={23} height={23} className="hidden dark:block" priority />
+        </span>
+        <span className="text-left">
+          <span className="block text-[14px] font-semibold leading-none tracking-[-0.035em]">CVFuzz</span>
+          <span className="mt-1 hidden font-mono text-[7px] uppercase leading-none tracking-[0.13em] text-muted-foreground sm:block">Robustness lab</span>
+        </span>
       </button>
-      <span className="hidden h-5 w-px bg-border sm:block" />
-      <span className="hidden text-[11.5px] text-muted-foreground sm:block">Model robustness testing</span>
+      <span className="hidden h-5 w-px bg-border lg:block" />
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <button
+              type="button"
+              onClick={onToggleSidebar}
+              className="hidden size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground lg:flex"
+              aria-label={sidebarCollapsed ? "Expand recent tests panel" : "Collapse recent tests panel"}
+              aria-expanded={!sidebarCollapsed}
+              aria-controls="runs-sidebar"
+            />
+          }
+        >
+          {sidebarCollapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
+        </TooltipTrigger>
+        <TooltipContent>{sidebarCollapsed ? "Expand recent tests" : "Collapse recent tests"}</TooltipContent>
+      </Tooltip>
       <div className="ml-auto flex items-center gap-2">
         <Tooltip>
           <TooltipTrigger
@@ -69,6 +132,7 @@ function Header({ onNewRun, apiState }: { onNewRun: () => void; apiState: "conne
           </TooltipTrigger>
           <TooltipContent>{apiState === "offline" ? "Start the API with cvfuzz serve" : "CVFuzz is connected and ready"}</TooltipContent>
         </Tooltip>
+        <ThemeToggle />
         <Button onClick={onNewRun}>
           <Plus className="size-3.5" /> New test
         </Button>
@@ -113,7 +177,7 @@ function RunsSidebar({
         }}
         className={`group w-full rounded-md border p-3 text-left transition-[background-color,border-color] ${
           selectedId === run.id
-            ? "border-white/14 bg-accent"
+            ? "border-foreground/14 bg-accent"
             : "border-transparent bg-transparent hover:border-border hover:bg-secondary"
         }`}
       >
@@ -136,7 +200,7 @@ function RunsSidebar({
   })
 
   return (
-    <aside className="min-w-0 border-b border-border bg-card lg:sticky lg:top-14 lg:h-[calc(100vh-3.5rem)] lg:border-b-0 lg:border-r">
+    <aside id="runs-sidebar" className="min-w-0 overflow-hidden border-b border-border bg-card lg:sticky lg:top-14 lg:h-[calc(100vh-3.5rem)] lg:border-b-0 lg:border-r">
       <details ref={mobileDetails} className="group lg:hidden">
         <summary className="flex h-12 cursor-pointer list-none items-center gap-2 px-4 text-xs font-medium hover:bg-secondary">
           Recent tests
@@ -339,7 +403,7 @@ function ResultCard({
 }) {
   const state = metric.failures > 0 ? "Changes detected" : "No changes detected"
   return (
-    <article className="overflow-hidden rounded-lg border border-border bg-card transition-colors hover:border-white/15">
+    <article className="overflow-hidden rounded-lg border border-border bg-card transition-colors hover:border-foreground/15">
       <div className="flex items-start justify-between gap-4 border-b border-border px-3.5 py-3">
         <div className="min-w-0">
           <p className={`font-mono text-[8px] uppercase tracking-[0.12em] ${metric.failures ? "text-failed" : "text-stable"}`}>{state}</p>
@@ -518,6 +582,7 @@ export function CVFuzzDashboard() {
   const [progress, setProgress] = useState(0)
   const [progressLabel, setProgressLabel] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   const refreshRuns = useCallback(async () => {
     setLoadingRuns(true)
@@ -620,9 +685,16 @@ export function CVFuzzDashboard() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <a href="#main-content" className="sr-only fixed left-3 top-3 z-[100] rounded-md bg-foreground px-3 py-2 text-xs text-background focus:not-sr-only">Skip to main content</a>
-      <Header onNewRun={newRun} apiState={apiState} />
-      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] lg:grid-cols-[232px_minmax(0,1fr)]">
-        <RunsSidebar runs={runs} selectedId={selectedId} loading={loadingRuns} onSelect={(id) => void selectRun(id)} onRefresh={() => void refreshRuns()} />
+      <Header
+        onNewRun={newRun}
+        apiState={apiState}
+        sidebarCollapsed={sidebarCollapsed}
+        onToggleSidebar={() => setSidebarCollapsed((collapsed) => !collapsed)}
+      />
+      <div className={`grid min-w-0 grid-cols-[minmax(0,1fr)] transition-[grid-template-columns] duration-300 ease-out ${sidebarCollapsed ? "lg:grid-cols-[0_minmax(0,1fr)]" : "lg:grid-cols-[232px_minmax(0,1fr)]"}`}>
+        <div className={`min-w-0 transition-opacity duration-200 ${sidebarCollapsed ? "lg:invisible lg:opacity-0" : "lg:visible lg:opacity-100"}`}>
+          <RunsSidebar runs={runs} selectedId={selectedId} loading={loadingRuns} onSelect={(id) => void selectRun(id)} onRefresh={() => void refreshRuns()} />
+        </div>
         <main id="main-content" tabIndex={-1} className="min-w-0 px-3 sm:px-5 xl:px-7">
           {!initialLoaded ? (
             <LoadingWorkspace />
