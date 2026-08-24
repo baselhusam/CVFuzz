@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import localFont from "next/font/local"
 import { Providers } from "@/components/providers"
 import "./globals.css"
@@ -18,9 +18,11 @@ const plexMono = localFont({
 })
 
 export const metadata: Metadata = {
-  title: "CVFuzz — Failure boundary lab",
-  description: "Find the smallest realistic change that destabilizes your computer-vision model.",
+  title: "CVFuzz — Model robustness testing",
+  description: "See how real-world video changes affect your computer-vision model.",
 }
+
+export const viewport: Viewport = { themeColor: "#06080b" }
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

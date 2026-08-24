@@ -1,7 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { Gauge, ScanSearch, TimerReset, TriangleAlert } from "lucide-react"
+import { ChevronDown, Gauge, ScanSearch, TimerReset, TriangleAlert } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { formatParameters, formatTime, type RunMetrics, type TransformMetrics } from "@/lib/run-data"
 
@@ -52,22 +52,24 @@ function OverviewChart({ metrics }: { metrics: RunMetrics }) {
 function FailureTable({ metrics }: { metrics: RunMetrics }) {
   return (
     <div className="overflow-x-auto rounded-lg border border-border bg-card">
-      <div className="min-w-[660px]">
-        <div className="grid grid-cols-[1.15fr_1fr_.55fr_.45fr] border-b border-border bg-secondary/70 px-4 py-2.5 font-mono text-[8px] uppercase tracking-[0.12em] text-muted-foreground md:px-5">
-          <span>Condition</span><span>Parameters</span><span>First event</span><span>Events</span>
-        </div>
+      <table className="w-full min-w-[660px] border-collapse text-left">
+        <thead className="border-b border-border bg-secondary/70 font-mono text-[8px] uppercase tracking-[0.12em] text-muted-foreground">
+          <tr><th scope="col" className="px-4 py-2.5 font-normal md:px-5">Condition</th><th scope="col" className="px-4 py-2.5 font-normal">Parameters</th><th scope="col" className="px-4 py-2.5 font-normal">First change</th><th scope="col" className="px-4 py-2.5 font-normal">Events</th></tr>
+        </thead>
+        <tbody>
         {metrics.transforms.map((item) => (
-          <div key={item.id} className="grid grid-cols-[1.15fr_1fr_.55fr_.45fr] items-center border-b border-border/70 px-4 py-3 text-xs last:border-0 md:px-5">
-            <span className="flex min-w-0 items-center gap-2.5">
-              <i className={`size-1.5 shrink-0 ${item.failures ? "bg-failed" : "rounded-full bg-stable"}`} />
+          <tr key={item.id} className="border-b border-border/70 text-xs last:border-0">
+            <th scope="row" className="px-4 py-3 text-left font-normal md:px-5"><span className="flex min-w-0 items-center gap-2.5">
+              <i aria-hidden="true" className={`size-1.5 shrink-0 ${item.failures ? "bg-failed" : "rounded-full bg-stable"}`} />
               <span className="truncate font-medium">{item.name}</span>
-            </span>
-            <span className="truncate pr-4 font-mono text-[8.5px] text-muted-foreground">{formatParameters(item.parameters)}</span>
-            <span className="num text-[9px] text-muted-foreground">{formatTime(item.first_failure_seconds)}</span>
-            <span className={`num text-[10px] ${item.failures ? "text-failed" : "text-stable"}`}>{item.failures}</span>
-          </div>
+            </span></th>
+            <td className="max-w-64 truncate px-4 py-3 font-mono text-[8.5px] text-muted-foreground">{formatParameters(item.parameters)}</td>
+            <td className="num px-4 py-3 text-[9px] text-muted-foreground">{formatTime(item.first_failure_seconds)}</td>
+            <td className={`num px-4 py-3 text-[10px] ${item.failures ? "text-failed" : "text-stable"}`}>{item.failures}</td>
+          </tr>
         ))}
-      </div>
+        </tbody>
+      </table>
     </div>
   )
 }
@@ -114,11 +116,12 @@ export function MetricsPanel({ metrics }: { metrics: RunMetrics }) {
   ]
 
   return (
-    <section id="metrics" className="border-t border-border py-10 md:py-14">
-      <div className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-end">
-        <div><p className="section-kicker">02 / Evaluation record</p><h2 className="mt-2 text-2xl tracking-[-0.04em]">Measured frame by frame</h2></div>
-        <p className="max-w-md text-xs leading-5 text-muted-foreground">Observed detector outputs are separated from interpretation. Use the model, source, parameters, and saved artifacts above to reproduce the result.</p>
-      </div>
+    <details id="metrics" className="group mb-10 overflow-hidden rounded-lg border border-border bg-card md:mb-14">
+      <summary className="flex min-h-16 cursor-pointer list-none items-center gap-4 px-4 hover:bg-secondary/55 sm:px-5">
+        <span><span className="block text-[15px] font-medium">Detailed metrics</span><span className="mt-1 block text-[10px] text-muted-foreground">Charts, failure log, and retention timeline</span></span>
+        <ChevronDown className="ml-auto size-4 text-muted-foreground transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="border-t border-border p-4 sm:p-5">
       <div className="mb-5 grid grid-cols-2 overflow-hidden rounded-lg border border-border bg-border lg:grid-cols-4">
         {cards.map((metric, index) => (
           <div key={metric.label} className={`bg-card p-4 ${index % 2 === 1 ? "border-l border-border" : ""} ${index > 1 ? "border-t border-border" : ""} ${index > 0 ? "lg:border-l" : ""} lg:border-t-0`}>
@@ -131,14 +134,15 @@ export function MetricsPanel({ metrics }: { metrics: RunMetrics }) {
       </div>
       <Tabs defaultValue="overview" className="gap-5">
         <TabsList variant="line" className="h-9 gap-6 border-b border-border px-0">
-          <TabsTrigger value="overview" className="px-0 text-[11.5px]">Overview</TabsTrigger>
-          <TabsTrigger value="failures" className="px-0 text-[11.5px]">Failure log</TabsTrigger>
+          <TabsTrigger value="overview" className="px-0 text-[11.5px]">Summary</TabsTrigger>
+          <TabsTrigger value="failures" className="px-0 text-[11.5px]">Events</TabsTrigger>
           <TabsTrigger value="timeline" className="px-0 text-[11.5px]">Timeline</TabsTrigger>
         </TabsList>
         <TabsContent value="overview"><OverviewChart metrics={metrics} /></TabsContent>
         <TabsContent value="failures"><FailureTable metrics={metrics} /></TabsContent>
         <TabsContent value="timeline"><TimelineChart metrics={metrics} /></TabsContent>
       </Tabs>
-    </section>
+      </div>
+    </details>
   )
 }

@@ -87,7 +87,10 @@
     @apply m-0 leading-[1.1];
     font-weight: 540;
   }
-  button, a, input, select { -webkit-tap-highlight-color: transparent; }
+  button, a, input, select, summary {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
   :where(a, button, input, select, textarea, [tabindex]):focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;

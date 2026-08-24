@@ -1,6 +1,7 @@
 "use client"
 
-import { ScanLine } from "lucide-react"
+import { useState } from "react"
+import { LoaderCircle, ScanLine } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 type VideoStageProps = {
@@ -20,6 +21,7 @@ export function VideoStage({
   registerVideo,
   onTimeUpdate,
 }: VideoStageProps) {
+  const [ready, setReady] = useState(false)
   return (
     <div
       className={cn(
@@ -33,14 +35,21 @@ export function VideoStage({
         muted
         loop
         playsInline
-        preload={featured ? "metadata" : "none"}
+        preload={featured ? "auto" : "metadata"}
+        aria-label={label}
         className="size-full object-contain"
+        onLoadedData={() => setReady(true)}
         onTimeUpdate={(event) => {
           if (!onTimeUpdate) return
           const node = event.currentTarget
           onTimeUpdate(node.currentTime, Number.isFinite(node.duration) ? node.duration : 0)
         }}
       />
+      {featured && !ready && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#030504] text-[11px] text-muted-foreground" aria-live="polite">
+          <span className="flex items-center gap-2"><LoaderCircle className="size-4 animate-spin" /> Loading video preview…</span>
+        </div>
+      )}
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,.35),transparent_22%,transparent_75%,rgba(0,0,0,.55))]" />
       <span className="pointer-events-none absolute left-2.5 top-2.5 size-4 border-l border-t border-white/35" />
       <span className="pointer-events-none absolute bottom-2.5 right-2.5 size-4 border-b border-r border-signal/80" />
