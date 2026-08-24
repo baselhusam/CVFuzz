@@ -6,6 +6,9 @@
 
 **Find what breaks your computer vision model automatically.**
 
+[View the CVFuzz website](https://baselhusam.github.io/CVFuzz/) ·
+[Explore the source](https://github.com/baselhusam/CVFuzz)
+
 CVFuzz is a local-first robustness testing tool for computer vision models. Its primary web
 workflow takes one model and one video, first creates one full-length video per configured
 augmentation, then evaluates the original and each transformed video as separate stages. It
