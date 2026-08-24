@@ -238,8 +238,8 @@ CVFuzz/
 - Additional model formats and task adapters
 - CI robustness policies and regression gates
 
-## License note
+## License
 
-CVFuzz does not currently include a public project license. Ultralytics software and model
-weights have their own licensing terms; review them before distributing a product that depends
-on the Ultralytics adapter.
+CVFuzz is licensed under the [MIT License](LICENSE). Ultralytics software and model weights
+have their own licensing terms; review them before distributing a product that depends on the
+Ultralytics adapter.
