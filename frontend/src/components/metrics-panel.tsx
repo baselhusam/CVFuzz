@@ -10,7 +10,7 @@ import {
   type TransformMetrics,
 } from "@/lib/run-data"
 
-const SERIES_COLORS = ["#5fd08a", "#54b4ff", "#f0a63c", "#f45b69", "#dc8cff", "#55d8c4", "#ff8a65", "#a6c7ff", "#d7fa03"]
+const SERIES_COLORS = ["#5fd08a", "#69b9ff", "#f0ae52", "#f06977", "#cf8cff", "#52d0bd", "#ff9272", "#a2b9e8", "#d7fa03"]
 
 type ChartKind = "retention" | "failures"
 type SortKey = "name" | "retention" | "confidence_delta" | "failures" | "affected_frames" | "mean_inference_ms"
@@ -50,35 +50,46 @@ function MetricChart({ kind, metrics, visibleIds, hoverIndex, onHover }: { kind:
   const pointX = (index: number) => left + (samples <= 1 ? 0 : (index / (samples - 1)) * chartWidth)
   const pointY = (value: number) => top + chartHeight - (value / maxValue) * chartHeight
   const line = (item: TransformMetrics) => Array.from({ length: samples }, (_, index) => `${pointX(index)},${pointY(valueAt(item, index))}`).join(" ")
+  const area = (item: TransformMetrics) => `${line(item)} ${pointX(samples - 1)},${height - bottom} ${pointX(0)},${height - bottom}`
   const yLabels = kind === "retention" ? [100, 75, 50, 25, 0] : [maxValue, Math.round(maxValue * .75), Math.round(maxValue * .5), Math.round(maxValue * .25), 0]
   const hoverTime = hoverIndex == null ? null : seriesPoint(items[0] || metrics.transforms[0], hoverIndex, samples)?.timestamp_seconds
+  const focus = items.find((item) => item.id === metrics.weakest_transform) || items[0]
+  const chartId = `metric-${kind}`
 
   if (!items.length || samples < 2) return <div className="flex h-52 items-center justify-center border border-dashed border-border bg-card px-5 text-center font-mono text-[9px] uppercase tracking-[.12em] text-muted-foreground">No sampled timeline evidence is available for this run.</div>
 
   return (
-    <div className="overflow-hidden border border-border bg-card">
+    <div className="overflow-hidden border border-[#24303b] bg-[#070b10] shadow-[inset_0_1px_0_rgba(255,255,255,.035)]">
       <div className="relative cursor-crosshair px-2 pt-2 sm:px-4" onMouseMove={(event) => {
         const bounds = event.currentTarget.getBoundingClientRect()
         const ratio = Math.max(0, Math.min(1, (event.clientX - bounds.left - (left / width) * bounds.width) / ((chartWidth / width) * bounds.width)))
         onHover(Math.round(ratio * (samples - 1)))
       }} onMouseLeave={() => onHover(null)}>
         <svg viewBox={`0 0 ${width} ${height}`} className="block w-full" role="img" aria-label={kind === "retention" ? "Detection retention over the stream" : "Failure events per sampled frame"}>
+          <defs>
+            <linearGradient id={`${chartId}-canvas`} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#111a23" /><stop offset=".55" stopColor="#080d13" /><stop offset="1" stopColor="#06090d" /></linearGradient>
+            <linearGradient id={`${chartId}-area`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={SERIES_COLORS[metrics.transforms.indexOf(focus) % SERIES_COLORS.length]} stopOpacity=".25" /><stop offset="1" stopColor={SERIES_COLORS[metrics.transforms.indexOf(focus) % SERIES_COLORS.length]} stopOpacity="0" /></linearGradient>
+            <filter id={`${chartId}-glow`} x="-15%" y="-15%" width="130%" height="130%"><feGaussianBlur stdDeviation="2.2" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
+          </defs>
+          <rect x={left} y={top} width={chartWidth} height={chartHeight} fill={`url(#${chartId}-canvas)`} />
+          {[.25, .5, .75].map((ratio) => <line key={ratio} x1={left + ratio * chartWidth} x2={left + ratio * chartWidth} y1={top} y2={height - bottom} stroke="#1d2a35" strokeWidth="1" strokeDasharray="2 7" />)}
           {yLabels.map((label) => {
             const y = pointY(label)
-            return <g key={label}><line x1={left} x2={width - right} y1={y} y2={y} stroke="var(--border)" strokeWidth="1" /><text x={left - 9} y={y + 3} textAnchor="end" fill="var(--muted-foreground)" fontFamily="var(--font-plex-mono)" fontSize="10">{kind === "retention" ? `${label}%` : label}</text></g>
+            return <g key={label}><line x1={left} x2={width - right} y1={y} y2={y} stroke="#23313d" strokeWidth="1" /><text x={left - 9} y={y + 3} textAnchor="end" fill="#71808d" fontFamily="var(--font-plex-mono)" fontSize="10">{kind === "retention" ? `${label}%` : label}</text></g>
           })}
-          {items.map((item) => <polyline key={item.id} points={line(item)} fill="none" stroke={SERIES_COLORS[metrics.transforms.indexOf(item) % SERIES_COLORS.length]} strokeWidth={item.id === metrics.weakest_transform ? "2.5" : "1.6"} strokeLinejoin="round" vectorEffect="non-scaling-stroke" opacity={item.id === metrics.weakest_transform ? "1" : ".86"} />)}
-          {hoverIndex != null && <line x1={pointX(hoverIndex)} x2={pointX(hoverIndex)} y1={top} y2={height - bottom} stroke="var(--foreground)" strokeWidth="1" strokeDasharray="3 4" opacity=".5" />}
-          {[0, .25, .5, .75, 1].map((ratio) => <text key={ratio} x={left + ratio * chartWidth} y={height - 7} textAnchor="middle" fill="var(--muted-foreground)" fontFamily="var(--font-plex-mono)" fontSize="10">{formatTime(metrics.video_duration_seconds * ratio)}</text>)}
+          <polygon points={area(focus)} fill={`url(#${chartId}-area)`} />
+          {items.map((item) => <polyline key={item.id} points={line(item)} fill="none" stroke={SERIES_COLORS[metrics.transforms.indexOf(item) % SERIES_COLORS.length]} strokeWidth={item === focus ? "2.25" : "1.3"} strokeLinejoin="round" vectorEffect="non-scaling-stroke" opacity={item === focus ? "1" : ".5"} filter={item === focus ? `url(#${chartId}-glow)` : undefined} />)}
+          {hoverIndex != null && <><line x1={pointX(hoverIndex)} x2={pointX(hoverIndex)} y1={top} y2={height - bottom} stroke="#e9f1f5" strokeWidth="1" strokeDasharray="3 4" opacity=".7" />{items.map((item) => <circle key={item.id} cx={pointX(hoverIndex)} cy={pointY(valueAt(item, hoverIndex))} r={item === focus ? "4" : "2.6"} fill={SERIES_COLORS[metrics.transforms.indexOf(item) % SERIES_COLORS.length]} stroke="#070b10" strokeWidth="1.5" />)}</>}
+          {[0, .25, .5, .75, 1].map((ratio) => <text key={ratio} x={left + ratio * chartWidth} y={height - 7} textAnchor="middle" fill="#71808d" fontFamily="var(--font-plex-mono)" fontSize="10">{formatTime(metrics.video_duration_seconds * ratio)}</text>)}
         </svg>
       </div>
-      <div className="min-h-12 border-t border-border px-4 py-2.5 font-mono text-[9px] leading-5">
-        {hoverIndex == null ? <span className="uppercase tracking-[.12em] text-muted-foreground">Hover the chart to inspect one sampled frame</span> : <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5"><span className="uppercase tracking-[.12em] text-signal">{formatTime(hoverTime)}</span>{items.map((item) => {
-          const point = seriesPoint(item, hoverIndex, samples)
-          if (!point) return null
-          const value = kind === "retention" ? `${point.retention}%` : `${point.failures} events`
-          return <span key={item.id} className="flex items-center gap-1.5"><i className="size-1.5" style={{ background: SERIES_COLORS[metrics.transforms.indexOf(item) % SERIES_COLORS.length] }} /><span className="text-muted-foreground">{item.name}</span><span>{value}</span></span>
-        })}</div>}
+      <div className="border-t border-[#24303b] bg-[#0a1016] px-4 py-3 font-mono text-[8.5px] leading-5">
+        <div className="mb-1.5 flex items-center justify-between gap-3"><span className="uppercase tracking-[.12em] text-[#81909c]">{hoverIndex == null ? "Stream totals" : `Sample ${formatTime(hoverTime)}`}</span><span className="hidden uppercase tracking-[.1em] text-[#5f6d78] sm:block">{hoverIndex == null ? "Hover to inspect one frame" : "Live readout"}</span></div>
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5">{items.map((item) => {
+          const point = hoverIndex == null ? undefined : seriesPoint(item, hoverIndex, samples)
+          const value = kind === "retention" ? `${point?.retention ?? item.retention}%` : `${point?.failures ?? item.failures} events`
+          return <span key={item.id} className="flex items-center gap-1.5"><i className="size-1.5" style={{ background: SERIES_COLORS[metrics.transforms.indexOf(item) % SERIES_COLORS.length] }} /><span className="text-[#a7b2ba]">{item.name}</span><span className="text-[#eef3f5]">{value}</span></span>
+        })}</div>
       </div>
     </div>
   )
