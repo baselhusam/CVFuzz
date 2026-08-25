@@ -448,8 +448,11 @@ class VideoEvaluationRunner:
             else 100.0
         )
         weakest = min(transform_metrics, key=lambda item: item["retention"], default=None)
+        failure_events_by_kind: Counter[str] = Counter()
+        for item in transform_metrics:
+            failure_events_by_kind.update(item["failures_by_kind"])
         result_metrics = {
-            "schema_version": 2,
+            "schema_version": 3,
             "frames_analyzed": frames,
             "video_duration_seconds": round(frames / fps, 3),
             "fps": round(fps, 3),
@@ -468,6 +471,8 @@ class VideoEvaluationRunner:
             },
             "robustness_score": round(robustness_score, 2),
             "total_failures": sum(item["failures"] for item in transform_metrics),
+            "failure_events_by_kind": dict(sorted(failure_events_by_kind.items())),
+            "timeline_sample_every_n_frames": timeline_stride,
             "weakest_transform": weakest["id"] if weakest else None,
             "transforms": transform_metrics,
         }

@@ -88,6 +88,8 @@ transforms:
     assert run["model"]["adapter"] == "test"
     assert run["metrics"]["frames_analyzed"] == 3
     assert run["metrics"]["total_failures"] == 3
+    assert run["metrics"]["timeline_sample_every_n_frames"] == 1
+    assert run["metrics"]["failure_events_by_kind"] == {"missed": 3}
     assert run["metrics"]["inference"] == {
         "batch_size": 2,
         "image_size": {"width": 32, "height": 32},

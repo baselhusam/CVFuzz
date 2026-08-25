@@ -41,6 +41,8 @@ export type RunMetrics = {
   }
   robustness_score: number
   total_failures: number
+  failure_events_by_kind?: Record<string, number>
+  timeline_sample_every_n_frames?: number
   weakest_transform: string | null
   transforms: TransformMetrics[]
   duration_seconds: number

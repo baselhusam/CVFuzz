@@ -1,148 +1,144 @@
 "use client"
 
-import { motion } from "framer-motion"
-import { ChevronDown, Gauge, ScanSearch, TimerReset, TriangleAlert } from "lucide-react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { formatParameters, formatTime, type RunMetrics, type TransformMetrics } from "@/lib/run-data"
+import { useMemo, useState } from "react"
+import { ArrowDown, ArrowUp, Search } from "lucide-react"
+import {
+  formatParameters,
+  formatTime,
+  type RunMetrics,
+  type TimelinePoint,
+  type TransformMetrics,
+} from "@/lib/run-data"
 
-function resultTone(item: TransformMetrics, weakest: string | null) {
+const SERIES_COLORS = ["#5fd08a", "#54b4ff", "#f0a63c", "#f45b69", "#dc8cff", "#55d8c4", "#ff8a65", "#a6c7ff", "#d7fa03"]
+
+type ChartKind = "retention" | "failures"
+type SortKey = "name" | "retention" | "confidence_delta" | "failures" | "affected_frames" | "mean_inference_ms"
+type Severity = "all" | "weakest" | "boundary" | "stable"
+
+const humanize = (value: string) => value.replaceAll("_", " ")
+
+function seriesPoint(item: TransformMetrics, index: number, count: number): TimelinePoint | undefined {
+  if (!item.timeline.length) return undefined
+  if (count <= 1) return item.timeline[0]
+  return item.timeline[Math.round((index / (count - 1)) * (item.timeline.length - 1))]
+}
+
+function seriesTone(item: TransformMetrics, weakest: string | null) {
   if (item.id === weakest) return "var(--signal)"
-  if (item.failures > 0) return "var(--failed)"
+  if (item.failures) return "var(--failed)"
   return "var(--stable)"
 }
 
-function OverviewChart({ metrics }: { metrics: RunMetrics }) {
-  return (
-    <div className="rounded-lg border border-border bg-card p-4 md:p-5">
-      <div className="mb-7 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
-        <div>
-          <p className="section-kicker">Baseline object retention</p>
-          <h3 className="mt-2 text-[15px] tracking-[-0.02em]">Detections preserved in each transformed stream</h3>
-        </div>
-        <span className="font-mono text-[8.5px] uppercase tracking-[0.1em] text-muted-foreground">100 = baseline held</span>
-      </div>
-      <div className="grid grid-cols-3 gap-4 sm:grid-cols-5 lg:grid-cols-9">
-        {metrics.transforms.map((item, index) => (
-          <div key={item.id} className="flex min-w-0 flex-col items-center gap-2">
-            <div className="relative flex h-40 w-full max-w-10 items-end overflow-hidden rounded-sm bg-secondary">
-              <motion.div
-                initial={{ height: 0 }}
-                whileInView={{ height: `${item.retention}%` }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.55, delay: index * 0.035, ease: [0.2, 0.8, 0.2, 1] }}
-                className="w-full opacity-90"
-                style={{ background: resultTone(item, metrics.weakest_transform) }}
-              />
-              {[25, 50, 75].map((mark) => <i key={mark} className="absolute inset-x-0 h-px bg-white/5" style={{ bottom: `${mark}%` }} />)}
-            </div>
-            <span className="max-w-full truncate font-mono text-[7.5px] uppercase tracking-[0.08em] text-muted-foreground">{item.id.slice(0, 4)}</span>
-            <span className="num text-[9px]">{item.retention}%</span>
-          </div>
-        ))}
-      </div>
-      <div className="mt-6 flex flex-wrap gap-4 border-t border-border pt-4 font-mono text-[8px] uppercase tracking-[0.1em] text-muted-foreground">
-        <span className="flex items-center gap-2"><i className="size-1.5 rounded-full bg-stable" /> Stable in range</span>
-        <span className="flex items-center gap-2"><i className="size-1.5 bg-failed" /> Boundary crossed</span>
-        <span className="flex items-center gap-2"><i className="size-1.5 rotate-45 bg-signal" /> Weakest stream</span>
-      </div>
-    </div>
-  )
-}
-
-function FailureTable({ metrics }: { metrics: RunMetrics }) {
-  return (
-    <div className="overflow-x-auto rounded-lg border border-border bg-card">
-      <table className="w-full min-w-[660px] border-collapse text-left">
-        <thead className="border-b border-border bg-secondary/70 font-mono text-[8px] uppercase tracking-[0.12em] text-muted-foreground">
-          <tr><th scope="col" className="px-4 py-2.5 font-normal md:px-5">Condition</th><th scope="col" className="px-4 py-2.5 font-normal">Parameters</th><th scope="col" className="px-4 py-2.5 font-normal">First change</th><th scope="col" className="px-4 py-2.5 font-normal">Events</th></tr>
-        </thead>
-        <tbody>
-        {metrics.transforms.map((item) => (
-          <tr key={item.id} className="border-b border-border/70 text-xs last:border-0">
-            <th scope="row" className="px-4 py-3 text-left font-normal md:px-5"><span className="flex min-w-0 items-center gap-2.5">
-              <i aria-hidden="true" className={`size-1.5 shrink-0 ${item.failures ? "bg-failed" : "rounded-full bg-stable"}`} />
-              <span className="truncate font-medium">{item.name}</span>
-            </span></th>
-            <td className="max-w-64 truncate px-4 py-3 font-mono text-[8.5px] text-muted-foreground">{formatParameters(item.parameters)}</td>
-            <td className="num px-4 py-3 text-[9px] text-muted-foreground">{formatTime(item.first_failure_seconds)}</td>
-            <td className={`num px-4 py-3 text-[10px] ${item.failures ? "text-failed" : "text-stable"}`}>{item.failures}</td>
-          </tr>
-        ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-function TimelineChart({ metrics }: { metrics: RunMetrics }) {
-  const stream = metrics.transforms.find((item) => item.id === metrics.weakest_transform) ?? metrics.transforms[0]
-  if (!stream || stream.timeline.length < 2) {
-    return <div className="rounded-lg border border-border bg-card p-8 text-xs text-muted-foreground">No timeline evidence is available for this run.</div>
+function MetricChart({ kind, metrics, visibleIds, hoverIndex, onHover }: { kind: ChartKind; metrics: RunMetrics; visibleIds: Set<string>; hoverIndex: number | null; onHover: (index: number | null) => void }) {
+  const items = metrics.transforms.filter((item) => visibleIds.has(item.id) && item.timeline.length)
+  const samples = Math.max(0, ...items.map((item) => item.timeline.length))
+  const width = 1000
+  const height = kind === "retention" ? 270 : 148
+  const left = 48
+  const right = 12
+  const top = 14
+  const bottom = 30
+  const chartWidth = width - left - right
+  const chartHeight = height - top - bottom
+  const maxFailures = Math.max(1, ...items.flatMap((item) => item.timeline.map((point) => point.failures)))
+  const maxValue = kind === "retention" ? 100 : maxFailures
+  const valueAt = (item: TransformMetrics, index: number) => {
+    const point = seriesPoint(item, index, samples)
+    return point ? (kind === "retention" ? point.retention : point.failures) : 0
   }
-  const width = 920
-  const height = 250
-  const points = stream.timeline
-    .map((point, index) => `${(index / (stream.timeline.length - 1)) * width},${height - (point.retention / 100) * height}`)
-    .join(" ")
+  const pointX = (index: number) => left + (samples <= 1 ? 0 : (index / (samples - 1)) * chartWidth)
+  const pointY = (value: number) => top + chartHeight - (value / maxValue) * chartHeight
+  const line = (item: TransformMetrics) => Array.from({ length: samples }, (_, index) => `${pointX(index)},${pointY(valueAt(item, index))}`).join(" ")
+  const yLabels = kind === "retention" ? [100, 75, 50, 25, 0] : [maxValue, Math.round(maxValue * .75), Math.round(maxValue * .5), Math.round(maxValue * .25), 0]
+  const hoverTime = hoverIndex == null ? null : seriesPoint(items[0] || metrics.transforms[0], hoverIndex, samples)?.timestamp_seconds
+
+  if (!items.length || samples < 2) return <div className="flex h-52 items-center justify-center border border-dashed border-border bg-card px-5 text-center font-mono text-[9px] uppercase tracking-[.12em] text-muted-foreground">No sampled timeline evidence is available for this run.</div>
+
   return (
-    <div className="rounded-lg border border-border bg-card p-4 md:p-5">
-      <div className="mb-6 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
-        <div><p className="section-kicker">Weakest stream / {stream.name}</p><h3 className="mt-2 text-[15px] tracking-[-0.02em]">Detection retention over the full video</h3></div>
-        <span className="flex items-center gap-2 font-mono text-[8.5px] uppercase tracking-[0.1em] text-failed"><i className="size-1.5 bg-failed" /> {stream.failures} failure events</span>
-      </div>
-      <div className="relative overflow-hidden rounded-md border border-border bg-background p-3">
-        <svg viewBox={`0 0 ${width} ${height}`} className="h-56 w-full overflow-visible" role="img" aria-label={`${stream.name} object retention timeline`}>
-          {[0, 1, 2, 3, 4].map((line) => (
-            <line key={line} x1="0" x2={width} y1={(height / 4) * line} y2={(height / 4) * line} stroke="rgba(255,255,255,.06)" strokeWidth="1" />
-          ))}
-          <line x1="0" x2={width} y1="1" y2="1" stroke="var(--queued)" strokeDasharray="3 5" strokeWidth="1" />
-          <polyline points={points} fill="none" stroke="var(--signal)" strokeWidth="2.25" vectorEffect="non-scaling-stroke" />
-          {stream.timeline.map((point, index) => (
-            <circle key={point.frame} cx={(index / (stream.timeline.length - 1)) * width} cy={height - (point.retention / 100) * height} r={point.failures ? 5 : 2.25} fill={point.failures ? "var(--failed)" : "var(--signal)"} />
-          ))}
+    <div className="overflow-hidden border border-border bg-card">
+      <div className="relative cursor-crosshair px-2 pt-2 sm:px-4" onMouseMove={(event) => {
+        const bounds = event.currentTarget.getBoundingClientRect()
+        const ratio = Math.max(0, Math.min(1, (event.clientX - bounds.left - (left / width) * bounds.width) / ((chartWidth / width) * bounds.width)))
+        onHover(Math.round(ratio * (samples - 1)))
+      }} onMouseLeave={() => onHover(null)}>
+        <svg viewBox={`0 0 ${width} ${height}`} className="block w-full" role="img" aria-label={kind === "retention" ? "Detection retention over the stream" : "Failure events per sampled frame"}>
+          {yLabels.map((label) => {
+            const y = pointY(label)
+            return <g key={label}><line x1={left} x2={width - right} y1={y} y2={y} stroke="var(--border)" strokeWidth="1" /><text x={left - 9} y={y + 3} textAnchor="end" fill="var(--muted-foreground)" fontFamily="var(--font-plex-mono)" fontSize="10">{kind === "retention" ? `${label}%` : label}</text></g>
+          })}
+          {items.map((item) => <polyline key={item.id} points={line(item)} fill="none" stroke={SERIES_COLORS[metrics.transforms.indexOf(item) % SERIES_COLORS.length]} strokeWidth={item.id === metrics.weakest_transform ? "2.5" : "1.6"} strokeLinejoin="round" vectorEffect="non-scaling-stroke" opacity={item.id === metrics.weakest_transform ? "1" : ".86"} />)}
+          {hoverIndex != null && <line x1={pointX(hoverIndex)} x2={pointX(hoverIndex)} y1={top} y2={height - bottom} stroke="var(--foreground)" strokeWidth="1" strokeDasharray="3 4" opacity=".5" />}
+          {[0, .25, .5, .75, 1].map((ratio) => <text key={ratio} x={left + ratio * chartWidth} y={height - 7} textAnchor="middle" fill="var(--muted-foreground)" fontFamily="var(--font-plex-mono)" fontSize="10">{formatTime(metrics.video_duration_seconds * ratio)}</text>)}
         </svg>
-        <div className="mt-2 flex justify-between font-mono text-[8px] text-muted-foreground"><span>00:00</span><span>{formatTime(metrics.video_duration_seconds / 2)}</span><span>{formatTime(metrics.video_duration_seconds)}</span></div>
+      </div>
+      <div className="min-h-12 border-t border-border px-4 py-2.5 font-mono text-[9px] leading-5">
+        {hoverIndex == null ? <span className="uppercase tracking-[.12em] text-muted-foreground">Hover the chart to inspect one sampled frame</span> : <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5"><span className="uppercase tracking-[.12em] text-signal">{formatTime(hoverTime)}</span>{items.map((item) => {
+          const point = seriesPoint(item, hoverIndex, samples)
+          if (!point) return null
+          const value = kind === "retention" ? `${point.retention}%` : `${point.failures} events`
+          return <span key={item.id} className="flex items-center gap-1.5"><i className="size-1.5" style={{ background: SERIES_COLORS[metrics.transforms.indexOf(item) % SERIES_COLORS.length] }} /><span className="text-muted-foreground">{item.name}</span><span>{value}</span></span>
+        })}</div>}
       </div>
     </div>
+  )
+}
+
+function DetailTable({ metrics }: { metrics: RunMetrics }) {
+  const [query, setQuery] = useState("")
+  const [severity, setSeverity] = useState<Severity>("all")
+  const [sort, setSort] = useState<{ key: SortKey; direction: "asc" | "desc" }>({ key: "retention", direction: "asc" })
+  const rows = useMemo(() => {
+    const normalized = query.trim().toLowerCase()
+    return metrics.transforms.filter((item) => {
+      const matchesQuery = !normalized || `${item.name} ${formatParameters(item.parameters)}`.toLowerCase().includes(normalized)
+      const matchesSeverity = severity === "all" || (severity === "weakest" && item.id === metrics.weakest_transform) || (severity === "boundary" && item.failures > 0 && item.id !== metrics.weakest_transform) || (severity === "stable" && item.failures === 0)
+      return matchesQuery && matchesSeverity
+    }).sort((left, right) => {
+      const leftValue = sort.key === "name" ? left.name : left[sort.key]
+      const rightValue = sort.key === "name" ? right.name : right[sort.key]
+      const comparison = typeof leftValue === "string" && typeof rightValue === "string" ? leftValue.localeCompare(rightValue) : Number(leftValue) - Number(rightValue)
+      return sort.direction === "asc" ? comparison : -comparison
+    })
+  }, [metrics.transforms, metrics.weakest_transform, query, severity, sort])
+  const changeSort = (key: SortKey) => setSort((current) => current.key === key ? { key, direction: current.direction === "asc" ? "desc" : "asc" } : { key, direction: key === "name" ? "asc" : "desc" })
+  const arrow = (key: SortKey) => sort.key === key ? (sort.direction === "asc" ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />) : null
+  const dominantKind = (item: TransformMetrics) => Object.entries(item.failures_by_kind).sort(([, left], [, right]) => right - left)[0]
+
+  return (
+    <section className="overflow-hidden border border-border bg-card" aria-labelledby="transform-detail-heading">
+      <div className="flex flex-col gap-3 border-b border-border px-4 py-4 sm:px-5 lg:flex-row lg:items-center"><div className="min-w-0 lg:mr-auto"><h3 id="transform-detail-heading" className="text-[15px] tracking-[-.02em]">Per-transform detail</h3><p className="mt-1 text-[10px] text-muted-foreground">Sort, filter, and compare every tested condition.</p></div><label className="flex h-9 min-w-44 items-center gap-2 border border-input bg-background px-3 text-muted-foreground lg:max-w-60"><Search className="size-3.5" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Filter conditions" className="min-w-0 flex-1 bg-transparent text-[11px] text-foreground outline-none placeholder:text-muted-foreground" /></label><div className="flex flex-wrap gap-1.5">{(["all", "weakest", "boundary", "stable"] as Severity[]).map((item) => <button key={item} type="button" onClick={() => setSeverity(item)} className={`border px-2.5 py-2 font-mono text-[8px] uppercase tracking-[.09em] transition-colors ${severity === item ? "border-signal bg-signal text-ink" : "border-input text-muted-foreground hover:border-foreground/30 hover:text-foreground"}`}>{item}</button>)}</div></div>
+      <div className="overflow-x-auto"><table className="w-full min-w-[1010px] border-collapse text-left"><thead className="border-b border-border bg-secondary/50 font-mono text-[8px] uppercase tracking-[.12em] text-muted-foreground"><tr><th className="px-4 py-3 font-normal sm:px-5"><button type="button" onClick={() => changeSort("name")} className="flex items-center gap-1 hover:text-foreground">Condition {arrow("name")}</button></th><th className="px-4 py-3 font-normal">Parameters</th><th className="px-4 py-3 font-normal"><button type="button" onClick={() => changeSort("retention")} className="flex items-center gap-1 hover:text-foreground">Retention {arrow("retention")}</button></th><th className="px-4 py-3 font-normal"><button type="button" onClick={() => changeSort("confidence_delta")} className="flex items-center gap-1 hover:text-foreground">Δ confidence {arrow("confidence_delta")}</button></th><th className="px-4 py-3 font-normal"><button type="button" onClick={() => changeSort("failures")} className="flex items-center gap-1 hover:text-foreground">Events {arrow("failures")}</button></th><th className="px-4 py-3 font-normal"><button type="button" onClick={() => changeSort("affected_frames")} className="flex items-center gap-1 hover:text-foreground">Affected {arrow("affected_frames")}</button></th><th className="px-4 py-3 font-normal">First change</th><th className="px-4 py-3 font-normal"><button type="button" onClick={() => changeSort("mean_inference_ms")} className="flex items-center gap-1 hover:text-foreground">Inference {arrow("mean_inference_ms")}</button></th><th className="px-4 py-3 font-normal">Failure mix</th></tr></thead><tbody>{rows.map((item) => {
+        const dominant = dominantKind(item)
+        const tone = seriesTone(item, metrics.weakest_transform)
+        return <tr key={item.id} className="border-b border-border/70 last:border-0 hover:bg-secondary/25"><th scope="row" className="px-4 py-3.5 text-left font-normal sm:px-5"><span className="flex items-center gap-2.5"><i className="size-2 shrink-0" style={{ background: tone }} /><span className="font-medium">{item.name}</span>{item.id === metrics.weakest_transform && <span className="font-mono text-[7px] uppercase tracking-[.09em] text-signal">Weakest</span>}</span></th><td className="max-w-56 truncate px-4 py-3.5 font-mono text-[8.5px] text-muted-foreground">{formatParameters(item.parameters)}</td><td className="px-4 py-3.5"><span className="flex min-w-28 items-center gap-2"><i className="h-1 min-w-8 flex-1 bg-secondary"><i className="block h-full" style={{ width: `${item.retention}%`, background: tone }} /></i><span className="num text-[10px]" style={{ color: tone }}>{item.retention}%</span></span></td><td className={`num px-4 py-3.5 text-[10px] ${item.confidence_delta < 0 ? "text-failed" : "text-stable"}`}>{item.confidence_delta > 0 ? "+" : ""}{item.confidence_delta}%</td><td className={`num px-4 py-3.5 text-[10px] ${item.failures ? "text-failed" : "text-stable"}`}>{item.failures}</td><td className="num px-4 py-3.5 text-[10px] text-muted-foreground">{item.affected_frames} / {metrics.frames_analyzed}</td><td className="num px-4 py-3.5 text-[10px] text-muted-foreground">{formatTime(item.first_failure_seconds)}</td><td className="num px-4 py-3.5 text-[10px] text-muted-foreground">{item.mean_inference_ms} ms</td><td className="px-4 py-3.5 font-mono text-[8.5px] text-muted-foreground">{dominant ? `${humanize(dominant[0])} · ${dominant[1]}` : "—"}</td></tr>
+      })}</tbody></table></div>
+      {!rows.length && <p className="px-5 py-10 text-center text-[11px] text-muted-foreground">No conditions match the current filter.</p>}
+    </section>
   )
 }
 
 export function MetricsPanel({ metrics }: { metrics: RunMetrics }) {
-  const cards = [
-    { label: "Baseline confidence", value: `${metrics.baseline.mean_confidence}%`, detail: `${metrics.baseline.detections} detections`, icon: Gauge, tone: "text-foreground" },
-    { label: "Robustness score", value: metrics.robustness_score.toFixed(1), detail: "mean object retention", icon: ScanSearch, tone: "text-degraded" },
-    { label: "Failure events", value: String(metrics.total_failures), detail: `${metrics.transforms.length} transformed streams`, icon: TriangleAlert, tone: metrics.total_failures ? "text-failed" : "text-stable" },
-    { label: "Frames evaluated", value: String(metrics.frames_analyzed), detail: `${metrics.fps} FPS · ${formatTime(metrics.video_duration_seconds)}`, icon: TimerReset, tone: "text-steel" },
-  ]
+  const [visibleIds, setVisibleIds] = useState(() => new Set(metrics.transforms.map((item) => item.id)))
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null)
+  const failureKinds = Object.entries(metrics.failure_events_by_kind || metrics.transforms.reduce<Record<string, number>>((total, item) => {
+    for (const [kind, count] of Object.entries(item.failures_by_kind)) total[kind] = (total[kind] || 0) + count
+    return total
+  }, {}))
+  const sampleNote = metrics.timeline_sample_every_n_frames ? `sampled every ${metrics.timeline_sample_every_n_frames} frames` : "sampled across the full stream"
+  const toggleSeries = (id: string) => setVisibleIds((current) => {
+    const next = new Set(current)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    return next
+  })
 
   return (
-    <details id="metrics" className="group mb-10 overflow-hidden rounded-lg border border-border bg-card md:mb-14">
-      <summary className="flex min-h-16 cursor-pointer list-none items-center gap-4 px-4 hover:bg-secondary/55 sm:px-5">
-        <span><span className="block text-[15px] font-medium">Detailed metrics</span><span className="mt-1 block text-[10px] text-muted-foreground">Charts, failure log, and retention timeline</span></span>
-        <ChevronDown className="ml-auto size-4 text-muted-foreground transition-transform group-open:rotate-180" />
-      </summary>
-      <div className="border-t border-border p-4 sm:p-5">
-      <div className="mb-5 grid grid-cols-2 overflow-hidden rounded-lg border border-border bg-border lg:grid-cols-4">
-        {cards.map((metric, index) => (
-          <div key={metric.label} className={`bg-card p-4 ${index % 2 === 1 ? "border-l border-border" : ""} ${index > 1 ? "border-t border-border" : ""} ${index > 0 ? "lg:border-l" : ""} lg:border-t-0`}>
-            <metric.icon className={`size-3.5 ${metric.tone}`} />
-            <p className="metric-label mt-6">{metric.label}</p>
-            <p className={`num mt-1 text-2xl tracking-[-0.04em] ${metric.tone}`}>{metric.value}</p>
-            <p className="mt-1.5 text-[10px] text-muted-foreground">{metric.detail}</p>
-          </div>
-        ))}
-      </div>
-      <Tabs defaultValue="overview" className="gap-5">
-        <TabsList variant="line" className="h-9 gap-6 border-b border-border px-0">
-          <TabsTrigger value="overview" className="px-0 text-[11.5px]">Summary</TabsTrigger>
-          <TabsTrigger value="failures" className="px-0 text-[11.5px]">Events</TabsTrigger>
-          <TabsTrigger value="timeline" className="px-0 text-[11.5px]">Timeline</TabsTrigger>
-        </TabsList>
-        <TabsContent value="overview"><OverviewChart metrics={metrics} /></TabsContent>
-        <TabsContent value="failures"><FailureTable metrics={metrics} /></TabsContent>
-        <TabsContent value="timeline"><TimelineChart metrics={metrics} /></TabsContent>
-      </Tabs>
-      </div>
-    </details>
+    <section id="metrics" className="mb-10 border-t border-border pt-8 md:mb-14 md:pt-10" aria-labelledby="metrics-heading">
+      <header className="mb-5 flex flex-col justify-between gap-2 border-b border-border pb-3 sm:flex-row sm:items-end"><div><p className="section-kicker">Run analysis</p><h2 id="metrics-heading" className="mt-2 text-xl tracking-[-.03em]">Metrics</h2></div><p className="font-mono text-[8.5px] uppercase tracking-[.12em] text-muted-foreground">{metrics.transforms.length} streams · {sampleNote}</p></header>
+      <section className="mb-4 border border-border bg-card p-4 sm:p-5" aria-labelledby="retention-heading"><div className="mb-5 flex flex-col justify-between gap-4 xl:flex-row xl:items-start"><div><h3 id="retention-heading" className="text-[15px] tracking-[-.02em]">Detection retention over the stream</h3><p className="mt-1 font-mono text-[8.5px] uppercase tracking-[.1em] text-muted-foreground">Share of baseline objects still detected · {sampleNote}</p></div><div className="flex flex-wrap gap-1.5 xl:max-w-[650px] xl:justify-end">{metrics.transforms.map((item, index) => <button key={item.id} type="button" onClick={() => toggleSeries(item.id)} className={`flex items-center gap-1.5 border px-2.5 py-1.5 font-mono text-[8px] uppercase tracking-[.06em] transition-colors ${visibleIds.has(item.id) ? "border-input bg-background text-foreground" : "border-transparent bg-secondary text-muted-foreground line-through"}`}><i className="size-1.5" style={{ background: SERIES_COLORS[index % SERIES_COLORS.length] }} />{item.name}</button>)}</div></div><MetricChart kind="retention" metrics={metrics} visibleIds={visibleIds} hoverIndex={hoverIndex} onHover={setHoverIndex} /></section>
+      <section className="mb-4 border border-border bg-card p-4 sm:p-5" aria-labelledby="failure-chart-heading"><div className="mb-4 flex flex-col justify-between gap-2 sm:flex-row sm:items-baseline"><div><h3 id="failure-chart-heading" className="text-[15px] tracking-[-.02em]">Failure events per sampled frame</h3><p className="mt-1 text-[10px] text-muted-foreground">{failureKinds.length ? failureKinds.map(([kind]) => humanize(kind)).join(" · ") : "No failure events recorded"}</p></div><span className="font-mono text-[8px] uppercase tracking-[.1em] text-muted-foreground">{metrics.total_failures} total events</span></div><MetricChart kind="failures" metrics={metrics} visibleIds={visibleIds} hoverIndex={hoverIndex} onHover={setHoverIndex} /></section>
+      <DetailTable metrics={metrics} />
+    </section>
   )
 }
