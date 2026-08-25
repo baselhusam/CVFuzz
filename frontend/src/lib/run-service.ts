@@ -83,6 +83,7 @@ type RunSubmission = {
   device?: InferenceDevice["id"]
   batchSize: number
   imageSize: number | null
+  transforms: TransformConfig[]
   onProgress: (progress: RunProgress) => void
   onAccepted?: (run: RunRecord) => void
   onUpdate?: (run: RunRecord) => void
@@ -102,6 +103,7 @@ export async function submitRun({
   device,
   batchSize,
   imageSize,
+  transforms,
   onProgress,
   onAccepted,
   onUpdate,
@@ -113,6 +115,12 @@ export async function submitRun({
   if (device) body.append("device", device)
   body.append("batch_size", String(batchSize))
   body.append("image_size", imageSize == null ? "source" : String(imageSize))
+  body.append(
+    "transforms",
+    JSON.stringify(
+      transforms.map(({ id, enabled, parameters }) => ({ id, enabled, parameters })),
+    ),
+  )
   const accepted = await request<RunRecord>("/v1/runs", { method: "POST", body })
   const run = withArtifactUrls(accepted)
   onAccepted?.(run)

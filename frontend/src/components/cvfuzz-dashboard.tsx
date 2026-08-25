@@ -2,13 +2,11 @@
 
 import Image from "next/image"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Select } from "@base-ui/react/select"
-import { AnimatePresence, motion } from "framer-motion"
+import { motion } from "framer-motion"
 import {
   AlertTriangle,
   Check,
   ChevronDown,
-  CircleStop,
   LoaderCircle,
   Moon,
   PanelLeftClose,
@@ -21,8 +19,8 @@ import {
   VolumeX,
 } from "lucide-react"
 import { useTheme } from "next-themes"
-import { FileDropzone } from "@/components/file-dropzone"
 import { MetricsPanel } from "@/components/metrics-panel"
+import { NewRunWorkspace } from "@/components/new-run-workspace"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -38,11 +36,6 @@ import {
   type TransformMetrics,
 } from "@/lib/run-data"
 import { getRun, getRuns, getTransformConfig, submitRun } from "@/lib/run-service"
-
-const reveal = {
-  hidden: { opacity: 0, y: 12 },
-  visible: { opacity: 1, y: 0 },
-}
 
 const runDateFormatter = new Intl.DateTimeFormat(undefined, {
   month: "short",
@@ -255,218 +248,6 @@ function RunsSidebar({
       </div>
       </div>
     </aside>
-  )
-}
-
-function RunSetup({
-  model,
-  video,
-  devices,
-  device,
-  batchSize,
-  imageSize,
-  videoDimensions,
-  supportsDeviceSelection,
-  transforms,
-  onModel,
-  onVideo,
-  onDevice,
-  onBatchSize,
-  onImageSize,
-  onRun,
-  running,
-  progress,
-  progressLabel,
-  error,
-}: {
-  model: File | null
-  video: File | null
-  devices: InferenceDevice[]
-  device: InferenceDevice["id"]
-  batchSize: number
-  imageSize: number | null
-  videoDimensions: VideoDimensions | null
-  supportsDeviceSelection: boolean
-  transforms: TransformConfig[]
-  onModel: (file: File | null) => void
-  onVideo: (file: File | null) => void
-  onDevice: (device: InferenceDevice["id"]) => void
-  onBatchSize: (batchSize: number) => void
-  onImageSize: (imageSize: number | null) => void
-  onRun: () => void
-  running: boolean
-  progress: number
-  progressLabel: string
-  error: string | null
-}) {
-  const enabled = transforms.filter((item) => item.enabled)
-  const ready = Boolean(model && video)
-
-  return (
-    <motion.div variants={reveal} initial="hidden" animate="visible" className="mx-auto max-w-6xl px-1 py-6 md:px-3 md:py-9">
-      <div className="mb-6 max-w-3xl">
-        <p className="section-kicker text-signal">New test</p>
-        <h1 className="mt-3 text-balance text-[clamp(2rem,5vw,3.35rem)] leading-[1.02] tracking-[-0.05em]">
-          Test a model against real-world changes
-        </h1>
-        <p className="mt-4 max-w-2xl text-[13px] leading-6 text-steel">
-          Add a model and a video. CVFuzz changes the video in several ways and shows where the model’s detections become unreliable.
-        </p>
-      </div>
-
-      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
-        <div className="min-w-0 space-y-4">
-          <section aria-labelledby="files-heading">
-            <div className="mb-3 flex items-center gap-3">
-              <span className="num flex size-6 items-center justify-center rounded-full bg-signal text-[10px] text-ink">1</span>
-              <div>
-                <h2 id="files-heading" className="text-lg tracking-[-0.025em]">Add your files</h2>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">Files stay on this computer.</p>
-              </div>
-            </div>
-            <div className="grid gap-3 md:grid-cols-2">
-              <FileDropzone kind="model" file={model} onFile={onModel} />
-              <FileDropzone kind="video" file={video} onFile={onVideo} />
-            </div>
-          </section>
-
-          <details className="group overflow-hidden rounded-lg border border-border bg-card">
-            <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 hover:bg-secondary/55">
-              <span className="num flex size-6 items-center justify-center rounded-full border border-border text-[10px] text-steel">2</span>
-              <span>
-                <span className="block text-[13px] font-medium">Test settings</span>
-                <span className="mt-0.5 block text-[10px] text-muted-foreground">{enabled.length} conditions · batch {batchSize} · {devices.find((option) => option.id === device)?.name || "Automatic device"}</span>
-              </span>
-              <ChevronDown className="ml-auto size-4 text-muted-foreground transition-transform group-open:rotate-180" />
-            </summary>
-            <div className="grid border-t border-border lg:grid-cols-[minmax(0,1fr)_250px]">
-              <div className="border-b border-border p-4 lg:border-b-0 lg:border-r">
-                <p className="mb-3 text-[11px] font-medium">Video conditions</p>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {enabled.map((item) => (
-                    <div key={item.id} className="min-w-0 rounded-md border border-border bg-secondary/55 px-3 py-2.5">
-                      <p className="truncate text-[11.5px] font-medium">{item.name}</p>
-                      <p className="mt-1 truncate font-mono text-[8px] text-muted-foreground">{formatParameters(item.parameters)}</p>
-                    </div>
-                  ))}
-                  {!enabled.length && <p className="col-span-full text-xs text-muted-foreground">Start the local API to load test conditions.</p>}
-                </div>
-              </div>
-              <div className="space-y-4 p-4">
-                <Select.Root
-                  id="inference-device"
-                  name="inference-device"
-                  autoComplete="off"
-                  value={device}
-                  disabled={!supportsDeviceSelection}
-                  items={devices.map((option) => ({ label: option.name, value: option.id }))}
-                  onValueChange={(value) => {
-                    if (value) onDevice(value as InferenceDevice["id"])
-                  }}
-                >
-                  <Select.Label className="text-[11px] font-medium">Processing device</Select.Label>
-                  <Select.Trigger className="group mt-2 flex h-10 w-full items-center justify-between gap-3 rounded-xl border border-input bg-secondary/75 px-3 text-left text-[12px] text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,.025)] transition-colors hover:not-data-disabled:border-foreground/25 hover:not-data-disabled:bg-secondary data-pressed:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:text-muted-foreground">
-                    <Select.Value className="truncate" />
-                    <Select.Icon className="text-muted-foreground transition-transform group-data-open:rotate-180">
-                      <ChevronDown className="size-4" />
-                    </Select.Icon>
-                  </Select.Trigger>
-                  <Select.Portal>
-                    <Select.Positioner className="z-[70] outline-hidden" sideOffset={8}>
-                      <Select.Popup className="min-w-[var(--anchor-width)] overflow-hidden rounded-xl border border-border bg-popover p-1.5 text-foreground shadow-[0_18px_45px_rgba(0,0,0,.28)] outline-hidden transition-[opacity,transform] duration-150 data-ending-style:translate-y-[-4px] data-ending-style:opacity-0 data-starting-style:translate-y-[-4px] data-starting-style:opacity-0">
-                        <Select.List className="space-y-1">
-                          {devices.map((option) => (
-                            <Select.Item
-                              key={option.id}
-                              value={option.id}
-                              disabled={!option.available}
-                              className="group/item grid cursor-pointer grid-cols-[1rem_minmax(0,1fr)] items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12px] outline-hidden transition-colors data-highlighted:bg-secondary data-selected:bg-signal-soft data-disabled:cursor-not-allowed data-disabled:opacity-45"
-                            >
-                              <Select.ItemIndicator keepMounted className="invisible flex size-4 items-center justify-center text-signal group-data-[selected]/item:visible">
-                                <Check className="size-3.5" />
-                              </Select.ItemIndicator>
-                              <span className="min-w-0">
-                                <Select.ItemText className="block truncate">{option.name}</Select.ItemText>
-                                {!option.available && <span className="mt-0.5 block text-[9px] text-muted-foreground">Unavailable on this computer</span>}
-                              </span>
-                            </Select.Item>
-                          ))}
-                        </Select.List>
-                      </Select.Popup>
-                    </Select.Positioner>
-                  </Select.Portal>
-                </Select.Root>
-                <p className="mt-2 text-[11px] leading-4 text-muted-foreground">
-                  {supportsDeviceSelection ? devices.find((option) => option.id === device)?.description : "CVFuzz chooses the best available option."}
-                </p>
-                <label className="block">
-                  <span className="text-[11px] font-medium">Inference batch</span>
-                  <select
-                    value={batchSize}
-                    onChange={(event) => onBatchSize(Number(event.target.value))}
-                    disabled={!ready}
-                    className="mt-2 h-10 w-full rounded-xl border border-input bg-secondary/75 px-3 text-[12px] text-foreground outline-none transition-colors hover:border-foreground/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:text-muted-foreground"
-                    aria-describedby="batch-size-help"
-                  >
-                    {[1, 2, 4, 8, 16].map((value) => <option key={value} value={value}>{value} {value === 1 ? "frame" : "frames"}</option>)}
-                  </select>
-                  <span id="batch-size-help" className="mt-2 block text-[10px] leading-4 text-muted-foreground">Two frames is the default. Larger batches need more memory.</span>
-                </label>
-                <label className="block">
-                  <span className="text-[11px] font-medium">Inference image size</span>
-                  <select
-                    value={imageSize ?? "source"}
-                    onChange={(event) => onImageSize(event.target.value === "source" ? null : Number(event.target.value))}
-                    disabled={!ready}
-                    className="mt-2 h-10 w-full rounded-xl border border-input bg-secondary/75 px-3 text-[12px] text-foreground outline-none transition-colors hover:border-foreground/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:text-muted-foreground"
-                    aria-describedby="image-size-help"
-                  >
-                    <option value="source">{videoDimensions ? `Source video · ${videoDimensions.width} × ${videoDimensions.height}` : "Source video size"}</option>
-                    {[1280, 960, 640, 512].map((value) => <option key={value} value={value}>{value} × {value}</option>)}
-                  </select>
-                  <span id="image-size-help" className="mt-2 block text-[10px] leading-4 text-muted-foreground">Source size is the default. Smaller square inputs are faster but may reduce accuracy.</span>
-                </label>
-              </div>
-            </div>
-          </details>
-        </div>
-
-        <aside className="rounded-lg border border-border bg-card p-4 lg:sticky lg:top-20">
-          <h2 className="text-[15px] font-medium">Test summary</h2>
-          <div className="mt-4 space-y-3">
-            {[
-              ["Model", model?.name],
-              ["Video", video?.name],
-            ].map(([label, value]) => (
-              <div key={label} className="flex items-start gap-3 rounded-md bg-secondary/55 p-3">
-                <span className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full ${value ? "bg-stable/15 text-stable" : "border border-border text-muted-foreground"}`}>
-                  {value ? <Check className="size-3" /> : <span className="size-1 rounded-full bg-current" />}
-                </span>
-                <div className="min-w-0">
-                  <p className="text-[9px] uppercase tracking-[0.09em] text-muted-foreground">{label}</p>
-                  <p className="mt-1 truncate text-[11.5px]" title={value || undefined}>{value || "Not selected"}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t border-border pt-4 text-[11px]">
-            <span className="text-muted-foreground">Conditions</span><span>{enabled.length}</span>
-          </div>
-          <p className="mt-3 text-[10px] leading-4 text-muted-foreground">Processing and results stay on this computer.</p>
-          <Button size="lg" disabled={!ready || running} onClick={onRun} className="mt-4 w-full">
-            {running ? <><CircleStop className="size-4 signal-pulse" /> Running {progress}%</> : ready ? <><Play className="size-3.5 fill-current" /> Start test</> : "Add model & video to start"}
-          </Button>
-          <AnimatePresence>
-            {(running || error) && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} role={error ? "alert" : "status"} aria-live="polite" className={`mt-4 rounded-md p-3 ${error ? "bg-failed/5 text-failed" : "bg-secondary text-muted-foreground"}`}>
-                <div className="flex items-center justify-between gap-3 text-[10px]"><span>{error ?? progressLabel}</span><span className="num">{error ? "Needs attention" : `${progress}%`}</span></div>
-                {!error && <div className="mt-2 h-0.5 bg-background"><motion.div className="h-full bg-signal" animate={{ width: `${progress}%` }} /></div>}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </aside>
-      </div>
-    </motion.div>
   )
 }
 
@@ -778,6 +559,7 @@ export function CVFuzzDashboard() {
         device: supportsDeviceSelection ? device : undefined,
         batchSize,
         imageSize,
+        transforms,
         onProgress: (state) => { setProgress(state.progress); setProgressLabel(state.label) },
         onAccepted: (run) => {
           setSelectedId(run.id)
@@ -817,7 +599,7 @@ export function CVFuzzDashboard() {
           ) : selectedRun ? (
             <ActiveRun key={selectedRun.id} run={selectedRun} />
           ) : (
-            <RunSetup
+            <NewRunWorkspace
               model={model}
               video={video}
               devices={devices}
@@ -835,6 +617,7 @@ export function CVFuzzDashboard() {
               onDevice={setDevice}
               onBatchSize={setBatchSize}
               onImageSize={setImageSize}
+              onTransforms={setTransforms}
               onRun={() => void handleRun()}
               running={running}
               progress={progress}

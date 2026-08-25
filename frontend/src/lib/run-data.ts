@@ -111,6 +111,7 @@ export type TransformConfig = {
   name: string
   enabled: boolean
   parameters: Record<string, unknown>
+  parameter_options?: Record<string, Array<string | number>>
   target_aware: boolean
 }
 

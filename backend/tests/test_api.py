@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import cv2
@@ -5,6 +6,7 @@ import numpy as np
 from fastapi.testclient import TestClient
 
 from cvfuzz.api import create_app
+from cvfuzz.config import load_config
 from cvfuzz.types import Detection
 
 
@@ -58,8 +60,17 @@ transforms:
     )
 
     with TestClient(app) as client:
+        public_config = client.get("/v1/config").json()
+        assert public_config["transforms"][0]["parameter_options"] == {
+            "stops": [-1.0, -2.0]
+        }
         response = client.post(
             "/v1/runs",
+            data={
+                "transforms": json.dumps(
+                    [{"id": "exposure", "enabled": True, "parameters": {"stops": -1.0}}]
+                )
+            },
             files={
                 "model": ("fake.pt", b"weights", "application/octet-stream"),
                 "video": ("source.mp4", _video_bytes(tmp_path), "video/mp4"),
@@ -67,6 +78,9 @@ transforms:
         )
         assert response.status_code == 202
         run_id = response.json()["id"]
+        run_config = load_config(tmp_path / "runs" / run_id / "config.yaml")
+        assert run_config.transforms[0].enabled is True
+        assert run_config.transforms[0].render_parameters == {"stops": -1.0}
 
         detail = client.get(f"/v1/runs/{run_id}")
         assert detail.status_code == 200

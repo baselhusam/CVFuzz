@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useRef, useState } from "react"
 import { Check, Film, Package, Upload, X } from "lucide-react"
 import { motion } from "framer-motion"
@@ -10,6 +11,8 @@ type FileDropzoneProps = {
   kind: "model" | "video"
   file: File | null
   onFile: (file: File | null) => void
+  previewSrc?: string | null
+  previewLoading?: boolean
 }
 
 const copy = {
@@ -29,7 +32,7 @@ const copy = {
   },
 }
 
-export function FileDropzone({ kind, file, onFile }: FileDropzoneProps) {
+export function FileDropzone({ kind, file, onFile, previewSrc, previewLoading = false }: FileDropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
   const details = copy[kind]
@@ -73,8 +76,14 @@ export function FileDropzone({ kind, file, onFile }: FileDropzoneProps) {
       {file ? (
         <div className="flex min-h-40 flex-col justify-between p-4">
           <div className="flex items-center justify-between gap-4">
-            <span className="flex size-9 items-center justify-center rounded-md border border-stable/30 bg-stable/5 text-stable">
-              <Check className="size-4" />
+            <span className="relative flex size-12 items-center justify-center overflow-hidden rounded-md border border-stable/30 bg-stable/5 text-stable">
+              {kind === "video" && previewSrc ? (
+                <Image src={previewSrc} alt="First frame of selected source video" fill unoptimized sizes="48px" className="object-cover" />
+              ) : previewLoading ? (
+                <Film className="size-4 signal-pulse" />
+              ) : (
+                <Check className="size-4" />
+              )}
             </span>
             <span className="text-[11px] font-medium text-stable">Ready</span>
           </div>

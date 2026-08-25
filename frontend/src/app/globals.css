@@ -196,6 +196,32 @@
   box-shadow: 0 0 0 1px rgba(255,255,255,.24);
 }
 
+.augmentation-range {
+  appearance: none;
+  border: 0;
+  background: linear-gradient(90deg, var(--signal), var(--signal)) center / 100% 1px no-repeat;
+  cursor: ew-resize;
+}
+
+.augmentation-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--card);
+  border-radius: 50%;
+  background: var(--signal);
+  box-shadow: 0 0 0 1px var(--signal);
+}
+
+.augmentation-range::-moz-range-thumb {
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--card);
+  border-radius: 50%;
+  background: var(--signal);
+  box-shadow: 0 0 0 1px var(--signal);
+}
+
 .scrollbar-thin { scrollbar-width: thin; scrollbar-color: var(--accent) transparent; }
 
 @keyframes signal-pulse {

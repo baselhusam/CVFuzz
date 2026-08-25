@@ -73,6 +73,66 @@ def _parse_image_size(value: str | None, default: int | None) -> int | None:
     return image_size
 
 
+def _parse_transform_overrides(
+    value: str | None, base_config: CVFuzzConfig
+) -> dict[str, dict[str, object]]:
+    if value in {None, ""}:
+        return {}
+    try:
+        payload = json.loads(value)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=400, detail="Transforms must be valid JSON") from exc
+    if not isinstance(payload, list):
+        raise HTTPException(status_code=400, detail="Transforms must be a list")
+
+    available = {item.name: item for item in base_config.transforms}
+    overrides: dict[str, dict[str, object]] = {}
+    for index, item in enumerate(payload):
+        if not isinstance(item, dict):
+            raise HTTPException(
+                status_code=400, detail=f"Transform override {index + 1} must be an object"
+            )
+        unknown_fields = sorted(set(item) - {"id", "enabled", "parameters"})
+        if unknown_fields:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unknown transform override field(s): {', '.join(unknown_fields)}",
+            )
+        transform_id = item.get("id")
+        if not isinstance(transform_id, str) or transform_id not in available:
+            raise HTTPException(status_code=400, detail=f"Unknown transform: {transform_id}")
+        if transform_id in overrides:
+            raise HTTPException(status_code=400, detail=f"Duplicate transform: {transform_id}")
+        enabled = item.get("enabled")
+        parameters = item.get("parameters")
+        if not isinstance(enabled, bool) or not isinstance(parameters, dict):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Transform {transform_id} requires enabled and parameters",
+            )
+
+        config = available[transform_id]
+        unknown_parameters = sorted(set(parameters) - set(config.parameters))
+        if unknown_parameters:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Unknown {transform_id} parameter(s): "
+                    f"{', '.join(unknown_parameters)}"
+                ),
+            )
+        for name, parameter_value in parameters.items():
+            configured_value = config.video_parameters().get(name)
+            allowed = (*config.parameters[name].values, configured_value)
+            if parameter_value not in allowed:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Unsupported {transform_id}.{name} value: {parameter_value}",
+                )
+        overrides[transform_id] = {"enabled": enabled, "parameters": parameters}
+    return overrides
+
+
 def create_app(
     *,
     runs_root: str | Path | None = None,
@@ -147,6 +207,15 @@ def create_app(
                     "name": item.name.replace("_", " ").title(),
                     "enabled": item.enabled,
                     "parameters": item.video_parameters(),
+                    "parameter_options": {
+                        name: list(spec.values)
+                        + (
+                            [item.video_parameters()[name]]
+                            if item.video_parameters()[name] not in spec.values
+                            else []
+                        )
+                        for name, spec in item.parameters.items()
+                    },
                     "target_aware": item.target_aware,
                 }
                 for item in config.transforms
@@ -192,6 +261,7 @@ def create_app(
         device: Annotated[str | None, Form()] = None,
         batch_size: Annotated[str | None, Form()] = None,
         image_size: Annotated[str | None, Form()] = None,
+        transforms: Annotated[str | None, Form()] = None,
     ) -> dict[str, object]:
         model_name = model.filename or "model.pt"
         video_name = video.filename or "video.mp4"
@@ -214,6 +284,7 @@ def create_app(
         requested_image_size = _parse_image_size(
             image_size, base_config.run.inference_image_size
         )
+        transform_overrides = _parse_transform_overrides(transforms, base_config)
 
         store = VideoRunStore(root, model_name=model_name, source_name=video_name)
         model_path = store.inputs_path / safe_name(model_name)
@@ -224,6 +295,11 @@ def create_app(
             run_config = deepcopy(base_config.raw)
             run_config["run"]["inference_batch_size"] = requested_batch_size
             run_config["run"]["inference_image_size"] = requested_image_size
+            for transform_id, override in transform_overrides.items():
+                run_config["transforms"][transform_id]["enabled"] = override["enabled"]
+                run_config["transforms"][transform_id]["render_parameters"] = override[
+                    "parameters"
+                ]
             store.write_yaml("config.yaml", run_config)
         except Exception as exc:
             store.fail(f"Could not save uploaded files: {exc}")
