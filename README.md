@@ -1,100 +1,131 @@
 <p align="center">
-  <img src="brand/assets/cvfuzz-readme-banner.png" alt="Cinematic computer-vision robustness testing scene with a signal-lime detection frame" width="100%">
+  <img src="brand/assets/cvfuzz-readme-banner.png" alt="CVFuzz — computer vision robustness testing" width="100%">
 </p>
 
-# CVFuzz
+<p align="center">
+  <strong>Find the smallest realistic change that breaks your computer-vision model.</strong>
+</p>
 
-**Find what breaks your computer vision model automatically.**
+<p align="center">
+  Local-first robustness testing for object detectors — from failure-boundary search to full-stream video evaluation.
+</p>
 
-[View the CVFuzz website](https://baselhusam.github.io/CVFuzz/) ·
-[Explore the source](https://github.com/baselhusam/CVFuzz)
+<p align="center">
+  <a href="https://baselhusam.github.io/CVFuzz/"><img src="https://img.shields.io/badge/Website-Visit%20CVFuzz-91F766?style=for-the-badge&logo=googlechrome&logoColor=101510" alt="CVFuzz website"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-7C5CFC?style=for-the-badge" alt="MIT License"></a>
+  <a href="backend/pyproject.toml"><img src="https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.11"></a>
+  <a href="frontend/package.json"><img src="https://img.shields.io/badge/Next.js-16-000000?style=for-the-badge&logo=nextdotjs" alt="Next.js 16"></a>
+</p>
 
-CVFuzz is a local-first robustness testing tool for computer vision models. Its primary web
-workflow takes one model and one video, first creates one full-length video per configured
-augmentation, then evaluates the original and each transformed video as separate stages. It
-exposes playable outputs plus robustness metrics as persistent runs.
+<p align="center">
+  <a href="#why-cvfuzz">Why CVFuzz</a> ·
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#workflows">Workflows</a> ·
+  <a href="#configuration">Configuration</a> ·
+  <a href="#documentation">Documentation</a>
+</p>
 
-The original CLI boundary-search workflow remains available for finding the smallest change
-that destabilizes a specific object.
+---
 
-Instead of reporting only that motion blur reduces accuracy, CVFuzz aims to answer questions
-such as:
+## Why CVFuzz
 
-> At what blur kernel, exposure loss, fog strength, or occlusion percentage does this specific
-> detection fail?
+Production vision systems encounter degraded optics, motion, bad weather, compression, and
+partial visibility. Standard accuracy reporting tells you *whether* a model is good; CVFuzz
+helps reveal *where its robustness ends*.
 
-CVFuzz currently includes a Python backend and CLI plus a Next.js frontend for the visual
-robustness workflow. The first supported model adapter targets Ultralytics YOLO object-detection
-models.
+For every baseline detection, CVFuzz applies controlled, configurable visual transformations
+and detects the first severity that causes a meaningful prediction change. It can also evaluate
+an entire video stream and produce synchronized, annotated evidence for every enabled
+transformation.
 
-## Current capabilities
+> **Question CVFuzz is built to answer:** *At what motion-blur kernel, exposure loss, fog
+> strength, or occlusion percentage does this specific object fail?*
 
-- Upload a model and video through the local web application.
-- Apply all nine configured transformations to every decoded video frame.
-- Run inference on the original and every augmented stream.
-- Render ten annotated videos: one original plus nine augmentation outputs.
-- Persist uploads, progress, per-frame JSONL, metrics, and artifacts without a database.
-- Browse past runs, synchronized videos, failures, confidence, and retention in the frontend.
-- Run YOLO `.pt` models against images, image directories, and videos.
-- Use the original prediction as a metamorphic reference when annotations are unavailable.
-- Detect missed objects, confidence collapse, class changes, and localization drift.
-- Search object-level failure boundaries using configured severity levels and numeric refinement.
-- Configure every transformation and parameter sweep through YAML.
-- Reuse transformed inference results across objects when possible.
-- Store portable manifests, JSONL results, summaries, and failure images without a database.
+| Built for | What you get |
+| --- | --- |
+| Model validation | Reproducible failure boundaries for individual baseline objects |
+| Video robustness review | Original and transformed annotated MP4s with run-level metrics |
+| Local experimentation | File-backed runs, JSONL data, and no database or remote service |
+| Engineering workflows | YAML-defined transformations, deterministic seeds, and a CLI/API/UI stack |
 
-The initial transformation set includes:
+<p align="center">
+  <img src="brand/assets/cvfuzz-workstation-mockup.png" alt="CVFuzz web dashboard displaying video robustness results" width="92%">
+</p>
 
-- Exposure
-- Low light with sensor-like noise
-- Motion blur
-- Defocus blur
-- JPEG compression
-- Resolution degradation
-- Fog
-- Target-aware partial occlusion
-- Glare
+## Highlights
 
-## How the web workflow works
+- **Two complementary testing modes.** Search for the smallest object-level failure boundary,
+  or evaluate every frame of a complete video stream.
+- **Nine realistic degradations.** Exposure, low-light noise, motion blur, defocus, JPEG
+  compression, resolution degradation, fog, target-aware partial occlusion, and glare.
+- **Detection-aware failure analysis.** Identify missed objects, confidence collapse, class
+  changes, and localization drift using IoU-based matching.
+- **Evidence you can inspect.** Persist source inputs, YAML configuration, manifests, metrics,
+  event streams, frame results, failure images, and browser-playable annotated videos.
+- **Reproducible by design.** Transformation sweeps and render settings live in versioned YAML;
+  runs retain the configuration that produced them.
+- **Local-first architecture.** No database, cloud dependency, or synthetic demo results. GPU
+  acceleration is optional.
+
+## Workflows
 
 ```text
-model + video
-        │
-        ▼
-render 9 complete augmentation videos
-        │
-        ▼
-evaluate original video, then each augmentation video
-        │
-        ▼
-annotated original + augmented MP4s
-        │
-        ▼
-file-backed run + metrics + synchronized UI
+                         ┌────────────────────────────────────┐
+model + image/video ───► │ Boundary search (CLI)              │
+                         │ Find the least-severe object break │
+                         └────────────────────────────────────┘
+                                        │
+                                        ▼
+                  manifests · JSONL results · summaries · failure images
+
+model + video ──────────► render one complete video per transformation
+                                        │
+                                        ▼
+                         evaluate original and augmented streams
+                                        │
+                                        ▼
+                  annotated MP4s · metrics · events · persistent web run
 ```
 
-Without ground-truth annotations, a changed prediction represents model instability rather than
-proof that the transformed prediction is objectively wrong. Annotated evaluation is planned as
-a separate mode.
+### 1. Failure-boundary search
 
-## Requirements
+The `run` command uses baseline detections as metamorphic references when annotations are not
+available. For each object and transformation variant, it walks the configured severity levels,
+then numerically refines a boundary where the transform supports interpolation.
 
-- Python 3.11
-- macOS or Linux
-- A supported Ultralytics YOLO detection model
+This mode accepts an image, image directory, or video and writes portable run artifacts under
+the configured output directory (by default, `.cvfuzz/runs/`).
 
-GPU acceleration is optional. CVFuzz can run on CPU.
+### 2. Full-stream video evaluation
+
+The `video-run` command and local web application render one complete video for every enabled
+augmentation, then evaluate the original and every transformed frame. The result is a single,
+self-contained run with annotated MP4s, per-frame data, progress events, and aggregate metrics.
+
+When ground-truth annotations are unavailable, a changed prediction indicates **model
+instability**, not proof that the transformed prediction is objectively incorrect. Annotated
+evaluation is planned as a future mode.
 
 ## Quick start
 
+### Prerequisites
+
+- Python **3.11**
+- macOS or Linux
+- An [Ultralytics](https://docs.ultralytics.com/) compatible detection model (the first
+  supported adapter targets YOLO)
+- Optional: a GPU-supported runtime for faster inference
+
 ```bash
-cd backend
+git clone https://github.com/baselhusam/CVFuzz.git
+cd CVFuzz/backend
+
 python3.11 -m venv .venv
 source .venv/bin/activate
 python -m pip install -e '.[dev,yolo]'
 ```
 
-Create an editable configuration and inspect the built-in transforms:
+Create a configuration, verify it, and inspect the transformations:
 
 ```bash
 cvfuzz init-config cvfuzz.yaml
@@ -102,33 +133,33 @@ cvfuzz validate-config cvfuzz.yaml
 cvfuzz transforms
 ```
 
-Run a fuzz test:
+Run a failure-boundary test:
 
 ```bash
 cvfuzz run /path/to/yolo11n.pt /path/to/street.mp4 --config cvfuzz.yaml
-```
-
-Inspect a completed run:
-
-```bash
 cvfuzz inspect .cvfuzz/runs/<run-id>
 ```
 
-See the [backend documentation](backend/README.md) for package and configuration details.
+Run full-stream evaluation instead:
+
+```bash
+cvfuzz video-run /path/to/yolo11n.pt /path/to/street.mp4 --config cvfuzz.yaml
+cvfuzz inspect-video .cvfuzz/runs/<run-id>
+```
 
 ## Web interface
 
-The [frontend](frontend/README.md) provides the model/video upload workflow, persistent run
-sidebar, synchronized original and augmentation video wall, run progress, and real comparison
-metrics. Start the Python API first:
+CVFuzz includes a local Next.js interface for uploading a model and video, tracking a run, and
+reviewing synchronized original and transformed videos side by side.
+
+Start the API from an activated backend environment:
 
 ```bash
 cd backend
-source .venv/bin/activate
 cvfuzz serve
 ```
 
-Then start the frontend in another terminal:
+Then, in another terminal, start the frontend:
 
 ```bash
 cd frontend
@@ -136,16 +167,18 @@ npm install
 npm run dev
 ```
 
-The tracked local defaults use `http://127.0.0.1:8020` for the API and
-`http://localhost:3010` for the frontend, avoiding the commonly occupied ports 8000 and 3000.
-Edit `backend/.env` and `frontend/.env` together when choosing a different backend port.
+Open [`http://localhost:3010`](http://localhost:3010). The tracked defaults use
+`http://127.0.0.1:8020` for the local API, and completed web runs are stored under
+`backend/.cvfuzz/web-runs/`.
 
-## YAML transformation configuration
+See the [frontend guide](frontend/README.md) for environment variables, supported upload
+formats, API routes, and frontend quality checks.
 
-Each transformation identifies one ordered `search_parameter`. Other parameters can contain
-multiple values, creating independent variants. For example, this configuration searches the
-minimum breaking kernel size separately for three motion directions. `render_parameters`
-selects the single variant used for the full-length web output:
+## Configuration
+
+Every transformation is configured through versioned YAML. A transform has one ordered
+`search_parameter`; all other multi-value parameters create independent variants. The
+`render_parameters` select the single representative variant used in a full-length output video.
 
 ```yaml
 transforms:
@@ -161,43 +194,47 @@ transforms:
         values: [0, 45, 90]
 ```
 
-Numeric parameters may also use inclusive ranges:
+Keep search values ordered from least to most severe. Parameters can use explicit values or an
+inclusive numeric range:
 
 ```yaml
 stops:
-  range:
-    start: -0.5
-    stop: -3.0
-    step: -0.5
+  range: {start: -0.5, stop: -3.0, step: -0.5}
 ```
 
-The complete starting configuration is available in
-[`backend/configs/default.yaml`](backend/configs/default.yaml). A smaller end-to-end test profile
-is available in [`backend/configs/smoke.yaml`](backend/configs/smoke.yaml).
+Start with [the default profile](backend/configs/default.yaml), or use the compact
+[smoke profile](backend/configs/smoke.yaml) for a smaller end-to-end run.
 
-## Full-stream run artifacts
+## Artifacts and architecture
 
-CVFuzz stores each run in a self-contained directory:
+Runs are deliberately self-contained and portable. The full-stream workflow writes a directory
+with the inputs, generated video, configuration, and machine-readable evidence:
 
 ```text
 .cvfuzz/web-runs/<run-id>/
-├── inputs/
-├── augmented/
-├── artifacts/
-│   ├── original.mp4
-│   ├── exposure.mp4
-│   └── ...
-├── config.yaml
-├── manifest.json
-├── events.jsonl
-├── baseline.jsonl
-├── frames.jsonl
-├── metrics.json
-└── artifacts.json
+├── inputs/        # Uploaded model and source video
+├── augmented/     # Raw, full-length transformed intermediates
+├── artifacts/     # Browser-ready annotated original + transform MP4s
+├── config.yaml    # Exact resolved configuration
+├── manifest.json  # Run identity and status
+├── events.jsonl   # Progress event stream
+├── baseline.jsonl # Original-frame reference detections
+├── frames.jsonl   # Per-frame evaluation results
+├── metrics.json   # Aggregate robustness metrics
+└── artifacts.json # Artifact metadata
 ```
 
-The older boundary-search `cvfuzz run` command continues to write `results.jsonl`,
-`summary.json`, and failure images under its configured output directory.
+The system keeps model adapters, transformations, failure detection, search, execution, and
+storage independent to make future adapters and interfaces straightforward to add.
+
+## Documentation
+
+- [Backend documentation](backend/README.md) — API, CLI details, full-stream behavior, and
+  artifact layout.
+- [Frontend documentation](frontend/README.md) — local UI setup, configuration, and API usage.
+- [Default YAML configuration](backend/configs/default.yaml) — all built-in transformation
+  parameters and failure thresholds.
+- [Project website](https://baselhusam.github.io/CVFuzz/) — public project overview.
 
 ## Development
 
@@ -209,40 +246,21 @@ pytest
 pytest --cov=cvfuzz --cov-report=term-missing
 ```
 
-The current suite covers YAML validation, image transformations, failure classification,
-boundary refinement, full-stream rendering, file persistence, multipart API runs, and range
-requests for playable artifacts.
-
-## Repository structure
-
-```text
-CVFuzz/
-├── AGENTS.md
-├── README.md
-├── frontend/
-│   └── src/
-│       ├── app/
-│       ├── components/
-│       └── lib/
-└── backend/
-    ├── configs/
-    ├── src/cvfuzz/
-    │   ├── models/
-    │   └── transforms/
-    └── tests/
-```
+The test suite covers configuration validation, image transformations, failure classification,
+boundary refinement, full-stream rendering, file persistence, multipart API runs, and HTTP byte
+ranges for playable artifacts.
 
 ## Roadmap
 
-- Annotated datasets and ground-truth evaluation
+- Ground-truth and annotated-dataset evaluation
 - Combination and stochastic transformation search
 - HTML reports and shareable failure cards
-- Model and run comparison
-- Additional model formats and task adapters
+- Cross-model and cross-run comparison
+- More model formats, tasks, and adapter implementations
 - CI robustness policies and regression gates
 
 ## License
 
-CVFuzz is licensed under the [MIT License](LICENSE). Ultralytics software and model weights
-have their own licensing terms; review them before distributing a product that depends on the
+CVFuzz is released under the [MIT License](LICENSE). Ultralytics software and model weights have
+their own licensing terms; review those terms before distributing a product that uses the
 Ultralytics adapter.
