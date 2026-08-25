@@ -2,6 +2,7 @@
 
 import Image from "next/image"
 import { useCallback, useEffect, useRef, useState } from "react"
+import { Select } from "@base-ui/react/select"
 import { AnimatePresence, motion } from "framer-motion"
 import {
   AlertTriangle,
@@ -334,18 +335,49 @@ function RunSetup({
                 </div>
               </div>
               <div className="p-4">
-                <label htmlFor="inference-device" className="text-[11px] font-medium">Processing device</label>
-                <select
+                <Select.Root
                   id="inference-device"
                   name="inference-device"
                   autoComplete="off"
                   value={device}
-                  onChange={(event) => onDevice(event.target.value as InferenceDevice["id"])}
                   disabled={!supportsDeviceSelection}
-                  className="mt-2 h-9 w-full appearance-none rounded-md border border-input bg-secondary px-3 text-[12px] text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:text-muted-foreground"
+                  items={devices.map((option) => ({ label: option.name, value: option.id }))}
+                  onValueChange={(value) => {
+                    if (value) onDevice(value as InferenceDevice["id"])
+                  }}
                 >
-                  {devices.map((option) => <option key={option.id} value={option.id} disabled={!option.available}>{option.name}{!option.available ? " — unavailable" : ""}</option>)}
-                </select>
+                  <Select.Label className="text-[11px] font-medium">Processing device</Select.Label>
+                  <Select.Trigger className="group mt-2 flex h-10 w-full items-center justify-between gap-3 rounded-xl border border-input bg-secondary/75 px-3 text-left text-[12px] text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,.025)] transition-colors hover:not-data-disabled:border-foreground/25 hover:not-data-disabled:bg-secondary data-pressed:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:text-muted-foreground">
+                    <Select.Value className="truncate" />
+                    <Select.Icon className="text-muted-foreground transition-transform group-data-open:rotate-180">
+                      <ChevronDown className="size-4" />
+                    </Select.Icon>
+                  </Select.Trigger>
+                  <Select.Portal>
+                    <Select.Positioner className="z-[70] outline-hidden" sideOffset={8}>
+                      <Select.Popup className="min-w-[var(--anchor-width)] overflow-hidden rounded-xl border border-border bg-popover p-1.5 text-foreground shadow-[0_18px_45px_rgba(0,0,0,.28)] outline-hidden transition-[opacity,transform] duration-150 data-ending-style:translate-y-[-4px] data-ending-style:opacity-0 data-starting-style:translate-y-[-4px] data-starting-style:opacity-0">
+                        <Select.List className="space-y-1">
+                          {devices.map((option) => (
+                            <Select.Item
+                              key={option.id}
+                              value={option.id}
+                              disabled={!option.available}
+                              className="group/item grid cursor-pointer grid-cols-[1rem_minmax(0,1fr)] items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12px] outline-hidden transition-colors data-highlighted:bg-secondary data-selected:bg-signal-soft data-disabled:cursor-not-allowed data-disabled:opacity-45"
+                            >
+                              <Select.ItemIndicator keepMounted className="invisible flex size-4 items-center justify-center text-signal group-data-[selected]/item:visible">
+                                <Check className="size-3.5" />
+                              </Select.ItemIndicator>
+                              <span className="min-w-0">
+                                <Select.ItemText className="block truncate">{option.name}</Select.ItemText>
+                                {!option.available && <span className="mt-0.5 block text-[9px] text-muted-foreground">Unavailable on this computer</span>}
+                              </span>
+                            </Select.Item>
+                          ))}
+                        </Select.List>
+                      </Select.Popup>
+                    </Select.Positioner>
+                  </Select.Portal>
+                </Select.Root>
                 <p className="mt-2 text-[11px] leading-4 text-muted-foreground">
                   {supportsDeviceSelection ? devices.find((option) => option.id === device)?.description : "CVFuzz chooses the best available option."}
                 </p>
