@@ -7,6 +7,11 @@ run:
   seed: 42
   output_dir: .cvfuzz/runs
   save_failures: true
+  # Run the detector on two frames per call. Adjust this for available memory.
+  inference_batch_size: 2
+  # null preserves the uploaded video's native width and height. Set a square size (for
+  # example 640) to trade some accuracy for faster inference.
+  inference_image_size: null
 
 failure:
   # Associate detections at this IoU; report localization failure below localization_iou.

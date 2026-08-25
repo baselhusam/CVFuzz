@@ -12,6 +12,8 @@ def test_default_config_loads_and_expands_variants() -> None:
     config = load_config(DEFAULT_CONFIG)
 
     assert len(config.enabled_transforms) == 9
+    assert config.run.inference_batch_size == 2
+    assert config.run.inference_image_size is None
     motion_blur = next(item for item in config.transforms if item.name == "motion_blur")
     series = list(motion_blur.series())
 
@@ -96,4 +98,25 @@ transforms:
     )
 
     with pytest.raises(ConfigurationError, match="render_parameters"):
+        load_config(path)
+
+
+def test_invalid_inference_settings_are_rejected(tmp_path: Path) -> None:
+    path = tmp_path / "config.yaml"
+    path.write_text(
+        """
+version: 1
+run:
+  inference_batch_size: 0
+  inference_image_size: 16
+transforms:
+  exposure:
+    search_parameter: stops
+    parameters:
+      stops: {values: [-1.0]}
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigurationError, match="inference_batch_size"):
         load_config(path)

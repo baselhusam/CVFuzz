@@ -52,6 +52,31 @@ const runDateFormatter = new Intl.DateTimeFormat(undefined, {
 
 const readableFileName = (name?: string) => name?.replace(/\.[^.]+$/, "").replaceAll("-", " ") || "Not available"
 
+type VideoDimensions = { width: number; height: number }
+
+const readVideoDimensions = (file: File): Promise<VideoDimensions> =>
+  new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file)
+    const element = document.createElement("video")
+    const cleanup = () => {
+      URL.revokeObjectURL(url)
+      element.removeAttribute("src")
+      element.load()
+    }
+    element.preload = "metadata"
+    element.onloadedmetadata = () => {
+      const dimensions = { width: element.videoWidth, height: element.videoHeight }
+      cleanup()
+      if (dimensions.width > 0 && dimensions.height > 0) resolve(dimensions)
+      else reject(new Error("The video does not contain valid dimensions"))
+    }
+    element.onerror = () => {
+      cleanup()
+      reject(new Error("Could not read the video dimensions"))
+    }
+    element.src = url
+  })
+
 function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme()
 
@@ -238,11 +263,16 @@ function RunSetup({
   video,
   devices,
   device,
+  batchSize,
+  imageSize,
+  videoDimensions,
   supportsDeviceSelection,
   transforms,
   onModel,
   onVideo,
   onDevice,
+  onBatchSize,
+  onImageSize,
   onRun,
   running,
   progress,
@@ -253,11 +283,16 @@ function RunSetup({
   video: File | null
   devices: InferenceDevice[]
   device: InferenceDevice["id"]
+  batchSize: number
+  imageSize: number | null
+  videoDimensions: VideoDimensions | null
   supportsDeviceSelection: boolean
   transforms: TransformConfig[]
   onModel: (file: File | null) => void
   onVideo: (file: File | null) => void
   onDevice: (device: InferenceDevice["id"]) => void
+  onBatchSize: (batchSize: number) => void
+  onImageSize: (imageSize: number | null) => void
   onRun: () => void
   running: boolean
   progress: number
@@ -300,7 +335,7 @@ function RunSetup({
               <span className="num flex size-6 items-center justify-center rounded-full border border-border text-[10px] text-steel">2</span>
               <span>
                 <span className="block text-[13px] font-medium">Test settings</span>
-                <span className="mt-0.5 block text-[10px] text-muted-foreground">{enabled.length} conditions · {devices.find((option) => option.id === device)?.name || "Automatic device"}</span>
+                <span className="mt-0.5 block text-[10px] text-muted-foreground">{enabled.length} conditions · batch {batchSize} · {devices.find((option) => option.id === device)?.name || "Automatic device"}</span>
               </span>
               <ChevronDown className="ml-auto size-4 text-muted-foreground transition-transform group-open:rotate-180" />
             </summary>
@@ -317,7 +352,7 @@ function RunSetup({
                   {!enabled.length && <p className="col-span-full text-xs text-muted-foreground">Start the local API to load test conditions.</p>}
                 </div>
               </div>
-              <div className="p-4">
+              <div className="space-y-4 p-4">
                 <Select.Root
                   id="inference-device"
                   name="inference-device"
@@ -364,6 +399,33 @@ function RunSetup({
                 <p className="mt-2 text-[11px] leading-4 text-muted-foreground">
                   {supportsDeviceSelection ? devices.find((option) => option.id === device)?.description : "CVFuzz chooses the best available option."}
                 </p>
+                <label className="block">
+                  <span className="text-[11px] font-medium">Inference batch</span>
+                  <select
+                    value={batchSize}
+                    onChange={(event) => onBatchSize(Number(event.target.value))}
+                    disabled={!ready}
+                    className="mt-2 h-10 w-full rounded-xl border border-input bg-secondary/75 px-3 text-[12px] text-foreground outline-none transition-colors hover:border-foreground/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:text-muted-foreground"
+                    aria-describedby="batch-size-help"
+                  >
+                    {[1, 2, 4, 8, 16].map((value) => <option key={value} value={value}>{value} {value === 1 ? "frame" : "frames"}</option>)}
+                  </select>
+                  <span id="batch-size-help" className="mt-2 block text-[10px] leading-4 text-muted-foreground">Two frames is the default. Larger batches need more memory.</span>
+                </label>
+                <label className="block">
+                  <span className="text-[11px] font-medium">Inference image size</span>
+                  <select
+                    value={imageSize ?? "source"}
+                    onChange={(event) => onImageSize(event.target.value === "source" ? null : Number(event.target.value))}
+                    disabled={!ready}
+                    className="mt-2 h-10 w-full rounded-xl border border-input bg-secondary/75 px-3 text-[12px] text-foreground outline-none transition-colors hover:border-foreground/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:text-muted-foreground"
+                    aria-describedby="image-size-help"
+                  >
+                    <option value="source">{videoDimensions ? `Source video · ${videoDimensions.width} × ${videoDimensions.height}` : "Source video size"}</option>
+                    {[1280, 960, 640, 512].map((value) => <option key={value} value={value}>{value} × {value}</option>)}
+                  </select>
+                  <span id="image-size-help" className="mt-2 block text-[10px] leading-4 text-muted-foreground">Source size is the default. Smaller square inputs are faster but may reduce accuracy.</span>
+                </label>
               </div>
             </div>
           </details>
@@ -625,6 +687,9 @@ export function CVFuzzDashboard() {
   const [video, setVideo] = useState<File | null>(null)
   const [devices, setDevices] = useState<InferenceDevice[]>([])
   const [device, setDevice] = useState<InferenceDevice["id"]>("auto")
+  const [batchSize, setBatchSize] = useState(2)
+  const [imageSize, setImageSize] = useState<number | null>(null)
+  const [videoDimensions, setVideoDimensions] = useState<VideoDimensions | null>(null)
   const [supportsDeviceSelection, setSupportsDeviceSelection] = useState(false)
   const [running, setRunning] = useState(false)
   const [loadingRuns, setLoadingRuns] = useState(true)
@@ -657,6 +722,8 @@ export function CVFuzzDashboard() {
         setTransforms(initialConfig.transforms)
         setDevices(initialConfig.devices ?? [])
         setDevice(initialConfig.default_device)
+        setBatchSize(initialConfig.inference?.batch_size ?? 2)
+        setImageSize(initialConfig.inference?.image_size ?? null)
         setSupportsDeviceSelection(initialConfig.supportsDeviceSelection)
         // A fresh session always starts at the upload workspace. Previous runs remain optional.
         setSelectedId(null)
@@ -678,11 +745,23 @@ export function CVFuzzDashboard() {
     return () => { cancelled = true }
   }, [])
 
+  useEffect(() => {
+    let cancelled = false
+    if (!video) {
+      return () => { cancelled = true }
+    }
+    void readVideoDimensions(video)
+      .then((dimensions) => { if (!cancelled) setVideoDimensions(dimensions) })
+      .catch(() => { if (!cancelled) setVideoDimensions(null) })
+    return () => { cancelled = true }
+  }, [video])
+
   const newRun = () => {
     setSelectedId(null)
     setSelectedRun(null)
     setModel(null)
     setVideo(null)
+    setVideoDimensions(null)
     setProgress(0)
     setError(null)
   }
@@ -697,6 +776,8 @@ export function CVFuzzDashboard() {
         model,
         video,
         device: supportsDeviceSelection ? device : undefined,
+        batchSize,
+        imageSize,
         onProgress: (state) => { setProgress(state.progress); setProgressLabel(state.label) },
         onAccepted: (run) => {
           setSelectedId(run.id)
@@ -741,11 +822,19 @@ export function CVFuzzDashboard() {
               video={video}
               devices={devices}
               device={device}
+              batchSize={batchSize}
+              imageSize={imageSize}
+              videoDimensions={videoDimensions}
               supportsDeviceSelection={supportsDeviceSelection}
               transforms={transforms}
               onModel={setModel}
-              onVideo={setVideo}
+              onVideo={(file) => {
+                setVideo(file)
+                setVideoDimensions(null)
+              }}
               onDevice={setDevice}
+              onBatchSize={setBatchSize}
+              onImageSize={setImageSize}
               onRun={() => void handleRun()}
               running={running}
               progress={progress}

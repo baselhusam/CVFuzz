@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from pathlib import Path
 from typing import Any
 
@@ -97,16 +98,42 @@ class UltralyticsDetector:
         }
 
     def predict(self, image: np.ndarray) -> list[Detection]:
-        arguments: dict[str, Any] = {"source": image, "verbose": False, "conf": 0.001}
+        return self.predict_batch(
+            [image], image_size=(image.shape[0], image.shape[1])
+        )[0]
+
+    def predict_batch(
+        self, images: list[np.ndarray], *, image_size: tuple[int, int]
+    ) -> list[list[Detection]]:
+        """Predict a small ordered image batch at the requested model input size."""
+        if not images:
+            return []
+        arguments: dict[str, Any] = {
+            "source": images,
+            "verbose": False,
+            "conf": 0.001,
+            "imgsz": list(image_size),
+        }
         arguments["device"] = self.device
         try:
-            result = self._model.predict(**arguments)[0]
+            results = self._model.predict(**arguments)
         except Exception as exc:
             raise ModelAdapterError(f"YOLO inference failed: {exc}") from exc
+        if len(results) != len(images):
+            raise ModelAdapterError("YOLO returned an unexpected number of predictions")
+        return [self._detections(result) for result in results]
+
+    def normalize_image_size(self, image_size: tuple[int, int]) -> tuple[int, int]:
+        """Round a requested size once so Ultralytics does not adjust each batch."""
+        stride = int(self._model.model.stride.max())
+        return tuple(math.ceil(value / stride) * stride for value in image_size)  # type: ignore[return-value]
+
+    @staticmethod
+    def _detections(result: Any) -> list[Detection]:
         names = result.names
-        detections: list[Detection] = []
         if result.boxes is None:
-            return detections
+            return []
+        detections: list[Detection] = []
         for xyxy, confidence, class_id in zip(
             result.boxes.xyxy.cpu().tolist(),
             result.boxes.conf.cpu().tolist(),

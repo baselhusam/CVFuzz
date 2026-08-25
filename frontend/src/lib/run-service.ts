@@ -60,6 +60,10 @@ export async function getTransformConfig() {
     transforms: TransformConfig[]
     default_device?: InferenceDevice["id"]
     devices?: InferenceDevice[]
+    inference?: {
+      batch_size: number
+      image_size: number | null
+    }
   }>("/v1/config")
   const supportsDeviceSelection = Array.isArray(payload.devices)
   const devices = supportsDeviceSelection
@@ -77,6 +81,8 @@ type RunSubmission = {
   model: File
   video: File
   device?: InferenceDevice["id"]
+  batchSize: number
+  imageSize: number | null
   onProgress: (progress: RunProgress) => void
   onAccepted?: (run: RunRecord) => void
   onUpdate?: (run: RunRecord) => void
@@ -94,6 +100,8 @@ export async function submitRun({
   model,
   video,
   device,
+  batchSize,
+  imageSize,
   onProgress,
   onAccepted,
   onUpdate,
@@ -103,6 +111,8 @@ export async function submitRun({
   body.append("model", model)
   body.append("video", video)
   if (device) body.append("device", device)
+  body.append("batch_size", String(batchSize))
+  body.append("image_size", imageSize == null ? "source" : String(imageSize))
   const accepted = await request<RunRecord>("/v1/runs", { method: "POST", body })
   const run = withArtifactUrls(accepted)
   onAccepted?.(run)

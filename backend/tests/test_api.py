@@ -122,3 +122,31 @@ def test_api_rejects_unavailable_mps_request(tmp_path: Path, monkeypatch) -> Non
 
     assert response.status_code == 400
     assert "MPS" in response.json()["detail"]
+
+
+def test_api_persists_inference_settings_for_a_run(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr("cvfuzz.video_runner.shutil.which", lambda _name: None)
+    app = create_app(
+        runs_root=tmp_path / "runs",
+        config_path=Path(__file__).parents[1] / "configs" / "smoke.yaml",
+        detector_factory=lambda _path, _device: FakeDetector(),
+    )
+    with TestClient(app) as client:
+        response = client.post(
+            "/v1/runs",
+            data={"batch_size": "4", "image_size": "512"},
+            files={
+                "model": ("fake.pt", b"weights", "application/octet-stream"),
+                "video": ("source.mp4", _video_bytes(tmp_path), "video/mp4"),
+            },
+        )
+
+    assert response.status_code == 202
+    run_id = response.json()["id"]
+    with TestClient(app) as client:
+        payload = client.get(f"/v1/runs/{run_id}").json()
+    assert payload["inference"] == {
+        "batch_size": 4,
+        "image_size": {"width": 512, "height": 512},
+    }
+    assert payload["metrics"]["inference"] == payload["inference"]

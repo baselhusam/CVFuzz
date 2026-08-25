@@ -4,6 +4,7 @@ import json
 import os
 import time
 from collections.abc import Callable
+from copy import deepcopy
 from pathlib import Path
 from typing import Annotated
 
@@ -40,6 +41,36 @@ async def _save_upload(upload: UploadFile, destination: Path) -> None:
         while chunk := await upload.read(1024 * 1024):
             stream.write(chunk)
     await upload.close()
+
+
+def _parse_batch_size(value: str | None, default: int) -> int:
+    if value in {None, ""}:
+        return default
+    try:
+        batch_size = int(value)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Batch size must be an integer") from exc
+    if not 1 <= batch_size <= 64:
+        raise HTTPException(status_code=400, detail="Batch size must be between 1 and 64")
+    return batch_size
+
+
+def _parse_image_size(value: str | None, default: int | None) -> int | None:
+    if value in {None, ""}:
+        return default
+    if value.lower() == "source":
+        return None
+    try:
+        image_size = int(value)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400, detail="Inference image size must be 'source' or an integer"
+        ) from exc
+    if not 32 <= image_size <= 4096:
+        raise HTTPException(
+            status_code=400, detail="Inference image size must be between 32 and 4096"
+        )
+    return image_size
 
 
 def create_app(
@@ -106,6 +137,10 @@ def create_app(
         return {
             "version": config.version,
             **device_capabilities(),
+            "inference": {
+                "batch_size": config.run.inference_batch_size,
+                "image_size": config.run.inference_image_size,
+            },
             "transforms": [
                 {
                     "id": item.name,
@@ -155,6 +190,8 @@ def create_app(
         model: Annotated[UploadFile, File()],
         video: Annotated[UploadFile, File()],
         device: Annotated[str | None, Form()] = None,
+        batch_size: Annotated[str | None, Form()] = None,
+        image_size: Annotated[str | None, Form()] = None,
     ) -> dict[str, object]:
         model_name = model.filename or "model.pt"
         video_name = video.filename or "video.mp4"
@@ -170,13 +207,24 @@ def create_app(
         except ModelAdapterError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+        base_config = load_config(selected_config)
+        requested_batch_size = _parse_batch_size(
+            batch_size, base_config.run.inference_batch_size
+        )
+        requested_image_size = _parse_image_size(
+            image_size, base_config.run.inference_image_size
+        )
+
         store = VideoRunStore(root, model_name=model_name, source_name=video_name)
         model_path = store.inputs_path / safe_name(model_name)
         source_path = store.inputs_path / safe_name(video_name)
         try:
             await _save_upload(model, model_path)
             await _save_upload(video, source_path)
-            store.write_yaml("config.yaml", load_config(selected_config).raw)
+            run_config = deepcopy(base_config.raw)
+            run_config["run"]["inference_batch_size"] = requested_batch_size
+            run_config["run"]["inference_image_size"] = requested_image_size
+            store.write_yaml("config.yaml", run_config)
         except Exception as exc:
             store.fail(f"Could not save uploaded files: {exc}")
             raise HTTPException(status_code=500, detail="Could not save uploaded files") from exc

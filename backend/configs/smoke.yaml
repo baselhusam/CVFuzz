@@ -7,6 +7,8 @@ run:
   seed: 42
   output_dir: test-runs
   save_failures: true
+  inference_batch_size: 2
+  inference_image_size: null
 
 failure:
   match_iou: 0.30

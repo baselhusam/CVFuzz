@@ -22,6 +22,17 @@ class BrightnessDetector:
         return [Detection((5, 5, 27, 27), 0, "object", min(0.99, mean / 255))]
 
 
+class BatchBrightnessDetector(BrightnessDetector):
+    def __init__(self) -> None:
+        self.batch_calls: list[tuple[int, tuple[int, int]]] = []
+
+    def predict_batch(
+        self, images: list[np.ndarray], *, image_size: tuple[int, int]
+    ) -> list[list[Detection]]:
+        self.batch_calls.append((len(images), image_size))
+        return [self.predict(image) for image in images]
+
+
 def _write_video(path: Path) -> None:
     writer = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*"mp4v"), 5, (32, 32))
     assert writer.isOpened()
@@ -68,7 +79,8 @@ transforms:
     store = VideoRunStore(config.run.output_dir, model_name="fake.pt", source_name=source.name)
     store.write_yaml("config.yaml", config.raw)
 
-    run_path = VideoEvaluationRunner(BrightnessDetector(), config, store).run(source)
+    detector = BatchBrightnessDetector()
+    run_path = VideoEvaluationRunner(detector, config, store).run(source)
 
     run = read_run(run_path)
     assert run["status"] == "completed"
@@ -76,6 +88,11 @@ transforms:
     assert run["model"]["adapter"] == "test"
     assert run["metrics"]["frames_analyzed"] == 3
     assert run["metrics"]["total_failures"] == 3
+    assert run["metrics"]["inference"] == {
+        "batch_size": 2,
+        "image_size": {"width": 32, "height": 32},
+    }
+    assert detector.batch_calls == [(2, (32, 32)), (1, (32, 32)), (2, (32, 32)), (1, (32, 32))]
     assert run["metrics"]["transforms"][0]["id"] == "exposure"
     assert {artifact["id"] for artifact in run["artifacts"]} == {"original", "exposure"}
     assert all((run_path / artifact["path"]).is_file() for artifact in run["artifacts"])

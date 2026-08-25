@@ -30,6 +30,10 @@ export type RunMetrics = {
   video_duration_seconds: number
   fps: number
   resolution: { width: number; height: number }
+  inference?: {
+    batch_size: number
+    image_size: { width: number; height: number }
+  }
   baseline: {
     detections: number
     mean_confidence: number
@@ -82,6 +86,10 @@ export type RunRecord = {
     declared_frames?: number
   }
   transform_count?: number
+  inference?: {
+    batch_size: number
+    image_size: { width: number; height: number }
+  }
   metrics: RunMetrics | null
   artifacts: RunArtifact[]
 }

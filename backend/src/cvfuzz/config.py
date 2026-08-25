@@ -20,6 +20,8 @@ class RunConfig:
     seed: int = 42
     output_dir: Path = Path(".cvfuzz/runs")
     save_failures: bool = True
+    inference_batch_size: int = 2
+    inference_image_size: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -204,9 +206,21 @@ def load_config(path: str | Path) -> CVFuzzConfig:
         seed=_as_int(run_raw.get("seed", 42), "run.seed"),
         output_dir=Path(run_raw.get("output_dir", ".cvfuzz/runs")),
         save_failures=_as_bool(run_raw.get("save_failures", True), "run.save_failures"),
+        inference_batch_size=_as_int(
+            run_raw.get("inference_batch_size", 2), "run.inference_batch_size"
+        ),
+        inference_image_size=(
+            None
+            if run_raw.get("inference_image_size") is None
+            else _as_int(run_raw["inference_image_size"], "run.inference_image_size")
+        ),
     )
     if run.sample_every_n_frames < 1 or (run.max_frames is not None and run.max_frames < 1):
         raise ConfigurationError("sample_every_n_frames and max_frames must be positive")
+    if not 1 <= run.inference_batch_size <= 64:
+        raise ConfigurationError("run.inference_batch_size must be between 1 and 64")
+    if run.inference_image_size is not None and not 32 <= run.inference_image_size <= 4096:
+        raise ConfigurationError("run.inference_image_size must be between 32 and 4096")
     if not 0 <= run.baseline_confidence <= 1:
         raise ConfigurationError("baseline_confidence must be between 0 and 1")
 

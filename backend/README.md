@@ -56,6 +56,13 @@ baseline once, then processes each enabled augmentation in one pass: transform, 
 failure comparison, annotation, and final artifact creation. It creates the same artifacts used
 by the web application without writing an intermediate video for every condition.
 
+For full-stream runs, `run.inference_batch_size` defaults to `2`: frames are grouped for one
+detector call but are still evaluated, annotated, and written in their original order. Set
+`run.inference_image_size` to `null` (the default) to use the uploaded video's dimensions, or to
+a square size such as `640` to prioritize speed. The web upload flow exposes both choices after a
+model and video are selected. Native source dimensions are rounded to the model stride internally
+when required.
+
 ## Configuration model
 
 Each transform has one `search_parameter`, whose ordered values represent increasing

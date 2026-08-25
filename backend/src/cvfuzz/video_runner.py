@@ -304,10 +304,25 @@ def _apply_transform(
     return output
 
 
-def _predict(detector: Detector, image: np.ndarray) -> tuple[list[Detection], float]:
+def _predict_batch(
+    detector: Detector,
+    images: list[np.ndarray],
+    *,
+    image_size: tuple[int, int],
+) -> list[tuple[list[Detection], float]]:
+    """Predict ordered frames together, with a safe per-frame adapter fallback."""
+    if not images:
+        return []
     started = time.perf_counter()
-    detections = detector.predict(image)
-    return detections, (time.perf_counter() - started) * 1000
+    batch_predict = getattr(detector, "predict_batch", None)
+    if callable(batch_predict):
+        predictions = batch_predict(images, image_size=image_size)
+    else:
+        predictions = [detector.predict(image) for image in images]
+    if len(predictions) != len(images):
+        raise CVFuzzError("Detector returned an unexpected number of frame predictions")
+    per_frame_ms = (time.perf_counter() - started) * 1000 / len(images)
+    return [(detections, per_frame_ms) for detections in predictions]
 
 
 class VideoEvaluationRunner:
@@ -327,6 +342,7 @@ class VideoEvaluationRunner:
     def run(self, source: str | Path) -> Path:
         source_path = Path(source).expanduser().resolve()
         fps, width, height, declared_frames = self._video_info(source_path)
+        inference_image_size = self._inference_image_size(width, height)
         transforms = self.config.enabled_transforms
         metrics = {
             item.name: StreamMetrics(
@@ -366,6 +382,13 @@ class VideoEvaluationRunner:
                     "height": height,
                     "declared_frames": declared_frames,
                 },
+                inference={
+                    "batch_size": self.config.run.inference_batch_size,
+                    "image_size": {
+                        "width": inference_image_size[1],
+                        "height": inference_image_size[0],
+                    },
+                },
                 transform_count=len(transforms),
                 phase="preparing",
                 stage_index=0,
@@ -378,6 +401,7 @@ class VideoEvaluationRunner:
                     fps=fps,
                     size=(width, height),
                     declared_frames=declared_frames,
+                    inference_image_size=inference_image_size,
                     stage_index=1,
                     stage_total=stage_total,
                 )
@@ -392,6 +416,7 @@ class VideoEvaluationRunner:
                     fps=fps,
                     size=(width, height),
                     declared_frames=declared_frames,
+                    inference_image_size=inference_image_size,
                     timeline_stride=timeline_stride,
                     stage_index=transform_index + 2,
                     stage_total=stage_total,
@@ -429,6 +454,13 @@ class VideoEvaluationRunner:
             "video_duration_seconds": round(frames / fps, 3),
             "fps": round(fps, 3),
             "resolution": {"width": width, "height": height},
+            "inference": {
+                "batch_size": self.config.run.inference_batch_size,
+                "image_size": {
+                    "width": inference_image_size[1],
+                    "height": inference_image_size[0],
+                },
+            },
             "baseline": {
                 "detections": baseline_detections,
                 "mean_confidence": round(baseline_mean * 100, 2),
@@ -457,6 +489,12 @@ class VideoEvaluationRunner:
         if fps <= 0 or width <= 0 or height <= 0:
             raise CVFuzzError("The uploaded video has invalid frame rate or dimensions")
         return fps, width, height, frames
+
+    def _inference_image_size(self, width: int, height: int) -> tuple[int, int]:
+        requested = self.config.run.inference_image_size
+        size = (height, width) if requested is None else (requested, requested)
+        normalize_size = getattr(self.detector, "normalize_image_size", None)
+        return normalize_size(size) if callable(normalize_size) else size
 
     def _update_stage(
         self,
@@ -531,6 +569,7 @@ class VideoEvaluationRunner:
         fps: float,
         size: tuple[int, int],
         declared_frames: int,
+        inference_image_size: tuple[int, int],
         stage_index: int,
         stage_total: int,
     ) -> tuple[list[dict[str, Any]], int, float, float]:
@@ -555,38 +594,49 @@ class VideoEvaluationRunner:
         frames = 0
         try:
             while True:
-                success, image = capture.read()
-                if not success:
+                images: list[np.ndarray] = []
+                while len(images) < self.config.run.inference_batch_size:
+                    success, image = capture.read()
+                    if not success:
+                        break
+                    images.append(image)
+                if not images:
                     break
-                predictions, frame_inference_ms = _predict(self.detector, image)
-                baseline = [
-                    item
-                    for item in predictions
-                    if item.confidence >= self.config.run.baseline_confidence
-                ]
-                self.store.append_baseline(
-                    {
-                        "frame": frames,
-                        "timestamp_seconds": round(frames / fps, 3),
-                        "detections": [item.to_dict() for item in baseline],
-                        "inference_ms": round(frame_inference_ms, 4),
-                    }
-                )
-                writer.write(_annotate(image, baseline, stream_label="Original inference"))
-                detections += len(baseline)
-                confidence_sum += sum(item.confidence for item in baseline)
-                inference_ms += frame_inference_ms
-                records.append(
-                    {
-                        "schema_version": 1,
-                        "frame": frames,
-                        "timestamp_seconds": round(frames / fps, 3),
-                        "baseline_detections": len(baseline),
-                        "transforms": {},
-                    }
-                )
-                frames += 1
-                report(frames)
+                for image, (predictions, frame_inference_ms) in zip(
+                    images,
+                    _predict_batch(
+                        self.detector, images, image_size=inference_image_size
+                    ),
+                    strict=True,
+                ):
+                    baseline = [
+                        item
+                        for item in predictions
+                        if item.confidence >= self.config.run.baseline_confidence
+                    ]
+                    self.store.append_baseline(
+                        {
+                            "frame": frames,
+                            "timestamp_seconds": round(frames / fps, 3),
+                            "detections": [item.to_dict() for item in baseline],
+                            "inference_ms": round(frame_inference_ms, 4),
+                        }
+                    )
+                    writer.write(_annotate(image, baseline, stream_label="Original inference"))
+                    detections += len(baseline)
+                    confidence_sum += sum(item.confidence for item in baseline)
+                    inference_ms += frame_inference_ms
+                    records.append(
+                        {
+                            "schema_version": 1,
+                            "frame": frames,
+                            "timestamp_seconds": round(frames / fps, 3),
+                            "baseline_detections": len(baseline),
+                            "transforms": {},
+                        }
+                    )
+                    frames += 1
+                    report(frames)
             if frames == 0:
                 raise CVFuzzError("The uploaded video did not contain any decodable frames")
             writer.finish()
@@ -619,6 +669,7 @@ class VideoEvaluationRunner:
         fps: float,
         size: tuple[int, int],
         declared_frames: int,
+        inference_image_size: tuple[int, int],
         timeline_stride: int,
         stage_index: int,
         stage_total: int,
@@ -645,54 +696,72 @@ class VideoEvaluationRunner:
         frames = 0
         try:
             while True:
-                success, image = capture.read()
-                if not success:
+                batch: list[tuple[int, list[Detection], np.ndarray]] = []
+                while len(batch) < self.config.run.inference_batch_size:
+                    success, image = capture.read()
+                    if not success:
+                        break
+                    frame_index = frames + len(batch)
+                    baselines = self._next_baseline(references, frame_index)
+                    transformed = _apply_transform(
+                        image,
+                        config,
+                        baselines,
+                        seed=(
+                            self.config.run.seed
+                            + frame_index * 10_007
+                            + (phase_index - 1) * 101
+                        ),
+                    )
+                    batch.append((frame_index, baselines, transformed))
+                if not batch:
                     break
-                baselines = self._next_baseline(references, frames)
-                transformed = _apply_transform(
-                    image,
-                    config,
-                    baselines,
-                    seed=self.config.run.seed + frames * 10_007 + (phase_index - 1) * 101,
+                predictions_by_frame = _predict_batch(
+                    self.detector,
+                    [item[2] for item in batch],
+                    image_size=inference_image_size,
                 )
-                predictions, transform_inference_ms = _predict(self.detector, transformed)
-                visible_predictions = [
-                    item
-                    for item in predictions
-                    if item.confidence >= self.config.failure.missed_below_confidence
-                ]
-                failures: Counter[str] = Counter()
-                for baseline in baselines:
-                    failure = self.failure_detector.evaluate(baseline, predictions)
-                    if failure:
-                        failures[failure.kind] += 1
-                writer.write(
-                    _annotate(
-                        transformed,
-                        visible_predictions,
-                        stream_label=_display_name(config.name),
+                for (frame_index, baselines, transformed), (
+                    predictions,
+                    transform_inference_ms,
+                ) in zip(batch, predictions_by_frame, strict=True):
+                    visible_predictions = [
+                        item
+                        for item in predictions
+                        if item.confidence >= self.config.failure.missed_below_confidence
+                    ]
+                    failures: Counter[str] = Counter()
+                    for baseline in baselines:
+                        failure = self.failure_detector.evaluate(baseline, predictions)
+                        if failure:
+                            failures[failure.kind] += 1
+                    writer.write(
+                        _annotate(
+                            transformed,
+                            visible_predictions,
+                            stream_label=_display_name(config.name),
+                        )
                     )
-                )
-                metrics.record(
-                    frame_index=frames,
-                    timestamp=frames / fps,
-                    detections=visible_predictions,
-                    baseline_count=len(baselines),
-                    failures=failures,
-                    inference_ms=transform_inference_ms,
-                    include_timeline=frames % timeline_stride == 0,
-                )
-                if frames >= len(frame_records):
-                    raise CVFuzzError(
-                        f"Generated {config.name} video has more frames than the source"
+                    metrics.record(
+                        frame_index=frame_index,
+                        timestamp=frame_index / fps,
+                        detections=visible_predictions,
+                        baseline_count=len(baselines),
+                        failures=failures,
+                        inference_ms=transform_inference_ms,
+                        include_timeline=frame_index % timeline_stride == 0,
                     )
-                frame_records[frames]["transforms"][config.name] = {
-                    "detections": len(visible_predictions),
-                    "failures": sum(failures.values()),
-                    "failures_by_kind": dict(failures),
-                }
-                frames += 1
-                report(frames)
+                    if frame_index >= len(frame_records):
+                        raise CVFuzzError(
+                            f"Generated {config.name} video has more frames than the source"
+                        )
+                    frame_records[frame_index]["transforms"][config.name] = {
+                        "detections": len(visible_predictions),
+                        "failures": sum(failures.values()),
+                        "failures_by_kind": dict(failures),
+                    }
+                    frames += 1
+                    report(frames)
             if frames != len(frame_records):
                 raise CVFuzzError(
                     f"Generated {config.name} video does not match the source frame count"
