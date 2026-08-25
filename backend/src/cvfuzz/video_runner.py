@@ -661,6 +661,16 @@ class VideoEvaluationRunner:
                 raise CVFuzzError("The uploaded video did not contain any decodable frames")
             self._ensure_no_remaining_baselines(references)
             writer.finish()
+            self.store.publish_artifact(
+                {
+                    "id": "original",
+                    "name": "Original + inference",
+                    "kind": "original",
+                    "parameters": {},
+                    "path": str(output.relative_to(self.store.path)),
+                    "bytes": output.stat().st_size,
+                }
+            )
         except Exception:
             writer.writer.release()
             writer.working.unlink(missing_ok=True)
@@ -750,6 +760,16 @@ class VideoEvaluationRunner:
                 )
             self._ensure_no_remaining_baselines(references)
             writer.finish()
+            self.store.publish_artifact(
+                {
+                    "id": config.name,
+                    "name": _display_name(config.name),
+                    "kind": "augmentation",
+                    "parameters": metrics.parameters,
+                    "path": str(output.relative_to(self.store.path)),
+                    "bytes": output.stat().st_size,
+                }
+            )
         except Exception:
             writer.writer.release()
             writer.working.unlink(missing_ok=True)

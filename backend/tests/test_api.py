@@ -75,6 +75,10 @@ transforms:
         assert payload["metrics"]["frames_analyzed"] == 1
         assert len(payload["artifacts"]) == 2
 
+        with client.stream("GET", f"/v1/runs/{run_id}/events") as events:
+            assert events.status_code == 200
+            assert "event: run" in "".join(events.iter_text())
+
         listing = client.get("/v1/runs").json()["runs"]
         assert listing[0]["id"] == run_id
         assert "transforms" not in listing[0]["metrics"]

@@ -145,6 +145,17 @@ class VideoRunStore:
             error=message,
         )
 
+    def publish_artifact(self, artifact: dict[str, Any]) -> None:
+        """Make a completed video available before the whole run has finished."""
+        artifact_path = self.path / "artifacts.json"
+        if artifact_path.is_file():
+            existing = json.loads(artifact_path.read_text(encoding="utf-8")).get("artifacts", [])
+        else:
+            existing = []
+        artifacts = [item for item in existing if item.get("id") != artifact["id"]]
+        artifacts.append(artifact)
+        self.write_json("artifacts.json", {"artifacts": artifacts})
+
 
 def read_run(path: str | Path) -> dict[str, Any]:
     run_path = Path(path)

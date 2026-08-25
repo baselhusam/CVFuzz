@@ -82,7 +82,13 @@ type RunSubmission = {
   onUpdate?: (run: RunRecord) => void
 }
 
-const wait = (duration: number) => new Promise((resolve) => window.setTimeout(resolve, duration))
+function streamUrl(runId: string) {
+  return `${API_URL}/v1/runs/${encodeURIComponent(runId)}/events`
+}
+
+function parseLiveRun(event: MessageEvent<string>) {
+  return withArtifactUrls(JSON.parse(event.data) as RunRecord)
+}
 
 export async function submitRun({
   model,
@@ -97,18 +103,36 @@ export async function submitRun({
   body.append("model", model)
   body.append("video", video)
   if (device) body.append("device", device)
-  const accepted = await request<{ id: string }>("/v1/runs", { method: "POST", body })
-  let run = await getRun(accepted.id)
+  const accepted = await request<RunRecord>("/v1/runs", { method: "POST", body })
+  const run = withArtifactUrls(accepted)
   onAccepted?.(run)
 
-  while (run.status === "queued" || run.status === "running") {
-    onProgress({ progress: run.progress, label: run.stage })
-    onUpdate?.(run)
-    await wait(900)
-    run = await getRun(run.id)
-  }
-  onUpdate?.(run)
-  if (run.status === "failed") throw new Error(run.error || "The CVFuzz run failed")
-  onProgress({ progress: 100, label: "Run complete" })
-  return run
+  return await new Promise<RunRecord>((resolve, reject) => {
+    const events = new EventSource(streamUrl(run.id))
+
+    events.addEventListener("run", (event) => {
+      let liveRun: RunRecord
+      try {
+        liveRun = parseLiveRun(event as MessageEvent<string>)
+      } catch {
+        events.close()
+        reject(new Error("CVFuzz sent an invalid live run update"))
+        return
+      }
+      onProgress({ progress: liveRun.progress, label: liveRun.stage })
+      onUpdate?.(liveRun)
+      if (liveRun.status === "queued" || liveRun.status === "running") return
+      events.close()
+      if (liveRun.status === "failed") {
+        reject(new Error(liveRun.error || "The CVFuzz run failed"))
+      } else {
+        onProgress({ progress: 100, label: "Run complete" })
+        resolve(liveRun)
+      }
+    })
+
+    events.onerror = () => {
+      onProgress({ progress: 0, label: "Reconnecting to live progress…" })
+    }
+  })
 }

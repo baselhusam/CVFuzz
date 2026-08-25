@@ -175,23 +175,24 @@ function RunsSidebar({
           onSelect(run.id)
           mobileDetails.current?.removeAttribute("open")
         }}
-        className={`group w-full rounded-md border p-3 text-left transition-[background-color,border-color] ${
+        className={`group relative w-full overflow-hidden rounded-[1rem] border p-3.5 text-left shadow-[0_1px_0_rgba(11,14,18,.03)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(11,14,18,.08)] ${
           selectedId === run.id
-            ? "border-foreground/14 bg-accent"
-            : "border-transparent bg-transparent hover:border-border hover:bg-secondary"
+            ? "border-signal/45 bg-signal-soft ring-1 ring-signal/15"
+            : "border-border/70 bg-card/70 hover:border-foreground/15 hover:bg-card"
         }`}
       >
+        <span className={`absolute inset-y-3 left-0 w-0.5 rounded-r-full transition-colors ${selectedId === run.id ? "bg-signal" : "bg-transparent group-hover:bg-foreground/15"}`} aria-hidden="true" />
         <div className="flex items-center justify-between gap-3">
-          <span className="flex items-center gap-2 text-[10px] text-steel">
+          <span className="flex items-center gap-2 rounded-full bg-secondary/80 px-2 py-1 text-[9px] text-steel">
             <RunStatus status={run.status} /> {statusLabel}
           </span>
-          <span className="num text-[8px] text-muted-foreground">#{run.id.slice(-6)}</span>
+          <span className="num text-[8px] tracking-[0.08em] text-muted-foreground">#{run.id.slice(-6)}</span>
         </div>
-        <p className="mt-2.5 truncate text-xs font-medium" title={run.model.name}>{readableFileName(run.model.name)}</p>
+        <p className="mt-3 truncate text-[12.5px] font-medium tracking-[-0.015em]" title={run.model.name}>{readableFileName(run.model.name)}</p>
         <p className="mt-1 truncate text-[10px] text-muted-foreground" title={run.source.name}>{readableFileName(run.source.name)}</p>
-        <div className="mt-3 flex items-center justify-between text-[9px] text-muted-foreground">
+        <div className="mt-3.5 flex items-center justify-between border-t border-border/70 pt-2.5 text-[9px] text-muted-foreground">
           <span>{runDateFormatter.format(new Date(run.started_at))}</span>
-          <span className={`num ${run.status === "failed" ? "text-failed" : "text-steel"}`}>
+          <span className={`num rounded-full bg-secondary px-1.5 py-0.5 ${run.status === "failed" ? "text-failed" : "text-steel"}`}>
             {run.metrics ? `${Math.round(run.metrics.robustness_score)} / 100` : `${run.progress}%`}
           </span>
         </div>
@@ -204,7 +205,7 @@ function RunsSidebar({
       <details ref={mobileDetails} className="group lg:hidden">
         <summary className="flex h-12 cursor-pointer list-none items-center gap-2 px-4 text-xs font-medium hover:bg-secondary">
           Recent tests
-          <span className="num rounded-sm bg-secondary px-1.5 py-0.5 text-[9px] text-steel">{runs.length}</span>
+          <span className="num rounded-full bg-secondary px-2 py-0.5 text-[9px] text-steel">{runs.length}</span>
           <ChevronDown className="ml-auto size-4 text-muted-foreground transition-transform group-open:rotate-180" />
         </summary>
         <div className="max-h-80 space-y-1 overflow-y-auto border-t border-border p-2.5">
@@ -234,7 +235,7 @@ function RunsSidebar({
           <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
         </button>
       </div>
-      <div className="scrollbar-thin h-[calc(100%-3rem)] space-y-1 overflow-y-auto p-2.5 [content-visibility:auto]">
+      <div className="scrollbar-thin h-[calc(100%-3rem)] space-y-2 overflow-y-auto p-2.5 [content-visibility:auto]">
         {runItems}
         {!runs.length && !loading && (
           <div className="rounded-md border border-dashed border-border p-4">
@@ -528,9 +529,10 @@ function ActiveRun({ run }: { run: RunRecord }) {
     ? `Stage ${run.stage_index} of ${run.stage_total}`
     : "Full-stream processing"
   const stageProgress = run.stage_progress ?? run.progress
+  const availableVideos = run.artifacts.filter((artifact) => artifact.kind === "augmentation")
   return (
-    <div className="evidence-grid mx-auto my-8 flex min-h-[calc(100vh-12rem)] max-w-4xl items-center justify-center rounded-lg border border-border p-5">
-      <div className="w-full max-w-2xl rounded-lg border border-border bg-card p-7 text-center md:p-10">
+    <div className="evidence-grid mx-auto my-8 flex min-h-[calc(100vh-12rem)] max-w-5xl items-center justify-center rounded-[1.25rem] border border-border p-5">
+      <div className="w-full max-w-3xl rounded-[1.15rem] border border-border bg-card p-7 text-center shadow-[0_22px_60px_rgba(11,14,18,.08)] md:p-10">
         {run.status === "failed" ? (
           <span className="mx-auto flex size-10 items-center justify-center rounded-md border border-failed/30 bg-failed/5 text-failed"><AlertTriangle className="size-5" /></span>
         ) : (
@@ -544,6 +546,28 @@ function ActiveRun({ run }: { run: RunRecord }) {
             <div className="mb-2 flex justify-between font-mono text-[8.5px] uppercase tracking-[0.1em] text-muted-foreground"><span>{stageCounter}</span><span>{stageProgress}%</span></div>
             <div className="h-1 overflow-hidden rounded-full bg-secondary"><motion.div className="h-full bg-signal" animate={{ width: `${stageProgress}%` }} /></div>
           </div>
+        )}
+        {availableVideos.length > 0 && (
+          <section className="mt-8 border-t border-border pt-6 text-left" aria-labelledby="ready-videos-heading">
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <p className="section-kicker text-stable">Live results</p>
+                <h2 id="ready-videos-heading" className="mt-1 text-base tracking-[-0.02em]">Ready to review</h2>
+              </div>
+              <span className="num rounded-full bg-stable/10 px-2 py-1 text-[9px] text-stable">{availableVideos.length} {availableVideos.length === 1 ? "video" : "videos"}</span>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {availableVideos.map((artifact) => (
+                <article key={artifact.id} className="overflow-hidden rounded-xl border border-border bg-secondary/45">
+                  <video controls playsInline preload="metadata" src={artifact.url} className="aspect-video w-full bg-ink" />
+                  <div className="flex items-center justify-between gap-3 px-3 py-2.5">
+                    <p className="truncate text-[11px] font-medium">{artifact.name}</p>
+                    <Check className="size-3.5 shrink-0 text-stable" aria-label="Ready" />
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
         )}
       </div>
     </div>
@@ -563,6 +587,18 @@ function LoadingWorkspace() {
       <p className="mt-4 flex items-center gap-2 font-mono text-[8.5px] uppercase tracking-[0.12em] text-muted-foreground"><span className="size-1.5 rounded-full bg-signal signal-pulse" /> Loading local evidence</p>
     </div>
   )
+}
+
+function runSummary(run: RunRecord): RunSummary {
+  return Object.fromEntries(
+    Object.entries(run).filter(([key]) => key !== "artifacts"),
+  ) as RunSummary
+}
+
+function updateRunInList(current: RunSummary[], run: RunRecord) {
+  const next = runSummary(run)
+  const withoutCurrent = current.filter((item) => item.id !== run.id)
+  return [next, ...withoutCurrent]
 }
 
 export function CVFuzzDashboard() {
@@ -614,15 +650,15 @@ export function CVFuzzDashboard() {
     async function loadInitialState() {
       try {
         const [initialRuns, initialConfig] = await Promise.all([getRuns(), getTransformConfig()])
-        const initialRun = initialRuns[0] ? await getRun(initialRuns[0].id) : null
         if (cancelled) return
         setRuns(initialRuns)
         setTransforms(initialConfig.transforms)
         setDevices(initialConfig.devices ?? [])
         setDevice(initialConfig.default_device)
         setSupportsDeviceSelection(initialConfig.supportsDeviceSelection)
-        setSelectedId(initialRun?.id ?? null)
-        setSelectedRun(initialRun)
+        // A fresh session always starts at the upload workspace. Previous runs remain optional.
+        setSelectedId(null)
+        setSelectedRun(null)
         setApiState("online")
       } catch (cause) {
         if (!cancelled) {
@@ -639,16 +675,6 @@ export function CVFuzzDashboard() {
     void loadInitialState()
     return () => { cancelled = true }
   }, [])
-
-  useEffect(() => {
-    const hasActiveRun = runs.some((run) => run.status === "queued" || run.status === "running")
-    if (!hasActiveRun || running) return
-    const timer = window.setInterval(() => {
-      void refreshRuns()
-      if (selectedId) void getRun(selectedId).then(setSelectedRun).catch(() => undefined)
-    }, 1400)
-    return () => window.clearInterval(timer)
-  }, [refreshRuns, running, runs, selectedId])
 
   const newRun = () => {
     setSelectedId(null)
@@ -670,11 +696,18 @@ export function CVFuzzDashboard() {
         video,
         device: supportsDeviceSelection ? device : undefined,
         onProgress: (state) => { setProgress(state.progress); setProgressLabel(state.label) },
-        onAccepted: (run) => { setSelectedId(run.id); setSelectedRun(run); void refreshRuns() },
-        onUpdate: (run) => setSelectedRun(run),
+        onAccepted: (run) => {
+          setSelectedId(run.id)
+          setSelectedRun(run)
+          setRuns((current) => updateRunInList(current, run))
+        },
+        onUpdate: (run) => {
+          setSelectedRun(run)
+          setRuns((current) => updateRunInList(current, run))
+        },
       })
       setSelectedRun(completed)
-      await refreshRuns()
+      setRuns((current) => updateRunInList(current, completed))
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "The run could not be completed")
     } finally {

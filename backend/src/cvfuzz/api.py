@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+import json
 import os
+import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated
 
 from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
 from cvfuzz.config import CVFuzzConfig, load_config
 from cvfuzz.exceptions import ModelAdapterError
@@ -179,11 +181,7 @@ def create_app(
             store.fail(f"Could not save uploaded files: {exc}")
             raise HTTPException(status_code=500, detail="Could not save uploaded files") from exc
         background_tasks.add_task(execute_run, store, model_path, source_path, device)
-        return {
-            "id": store.run_id,
-            "status": "queued",
-            "status_url": f"/v1/runs/{store.run_id}",
-        }
+        return _artifact_urls(read_run(store.path))
 
     @app.get("/v1/runs/{run_id}")
     def get_run(run_id: str) -> dict[str, object]:
@@ -191,6 +189,31 @@ def create_app(
         if run_path.name != run_id or not (run_path / "manifest.json").is_file():
             raise HTTPException(status_code=404, detail="Run not found")
         return _artifact_urls(read_run(run_path))
+
+    @app.get("/v1/runs/{run_id}/events")
+    def stream_run_events(run_id: str) -> StreamingResponse:
+        """Send live run snapshots over one Server-Sent Events connection."""
+        run_path = root / safe_name(run_id)
+        if run_path.name != run_id or not (run_path / "manifest.json").is_file():
+            raise HTTPException(status_code=404, detail="Run not found")
+
+        def event_stream():
+            previous = ""
+            while True:
+                payload = _artifact_urls(read_run(run_path))
+                serialized = json.dumps(payload, sort_keys=True)
+                if serialized != previous:
+                    yield f"event: run\ndata: {serialized}\n\n"
+                    previous = serialized
+                if payload["status"] in {"completed", "failed"}:
+                    break
+                time.sleep(0.25)
+
+        return StreamingResponse(
+            event_stream(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
 
     @app.get("/v1/runs/{run_id}/artifacts/{artifact_path:path}")
     def get_artifact(run_id: str, artifact_path: str) -> FileResponse:
