@@ -16,7 +16,6 @@ import {
   Pause,
   Play,
   Plus,
-  RefreshCw,
   Sun,
   Volume2,
   VolumeX,
@@ -94,14 +93,14 @@ function Header({
   const apiTone = apiState === "online" ? "bg-stable" : apiState === "offline" ? "bg-failed" : "border border-queued"
   return (
     <header className="sticky top-0 z-50 flex h-14 items-center gap-3 border-b border-border bg-card/95 px-3 backdrop-blur-xl sm:px-4">
-      <button type="button" onClick={onNewRun} className="group flex shrink-0 items-center gap-2.5 rounded-md" aria-label="CVFuzz home">
-        <span className="relative flex size-8 items-center justify-center overflow-hidden rounded-md border border-border bg-secondary transition-colors group-hover:border-signal/50">
+      <button type="button" onClick={onNewRun} className="group flex shrink-0 items-center gap-2" aria-label="CVFuzz home">
+        <span className="flex size-7 items-center justify-center transition-transform duration-200 group-hover:scale-105">
           <Image src="/brand/cvfuzz-symbol-light.svg" alt="" width={23} height={23} className="dark:hidden" priority />
           <Image src="/brand/cvfuzz-symbol-dark.svg" alt="" width={23} height={23} className="hidden dark:block" priority />
         </span>
-        <span className="text-left">
-          <span className="block text-[14px] font-semibold leading-none tracking-[-0.035em]">CVFuzz</span>
-          <span className="mt-1 hidden font-mono text-[7px] uppercase leading-none tracking-[0.13em] text-muted-foreground sm:block">Robustness lab</span>
+        <span className="border-l border-border/70 pl-2.5 text-left">
+          <span className="block text-[15px] font-semibold leading-none tracking-[-0.05em] transition-colors group-hover:text-signal">CVFuzz</span>
+          <span className="mt-1 hidden font-mono text-[7px] font-medium uppercase leading-none tracking-[0.18em] text-muted-foreground sm:block">Robustness lab</span>
         </span>
       </button>
       <span className="hidden h-5 w-px bg-border lg:block" />
@@ -157,13 +156,11 @@ function RunsSidebar({
   selectedId,
   loading,
   onSelect,
-  onRefresh,
 }: {
   runs: RunSummary[]
   selectedId: string | null
   loading: boolean
   onSelect: (id: string) => void
-  onRefresh: () => void
 }) {
   const mobileDetails = useRef<HTMLDetailsElement>(null)
   const runItems = runs.map((run) => {
@@ -176,24 +173,23 @@ function RunsSidebar({
           onSelect(run.id)
           mobileDetails.current?.removeAttribute("open")
         }}
-        className={`group relative w-full overflow-hidden rounded-[1rem] border p-3.5 text-left shadow-[0_1px_0_rgba(11,14,18,.03)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(11,14,18,.08)] ${
+        className={`group w-full rounded-lg border px-3 py-2.5 text-left transition-colors duration-200 ${
           selectedId === run.id
-            ? "border-signal/45 bg-signal-soft ring-1 ring-signal/15"
-            : "border-border/70 bg-card/70 hover:border-foreground/15 hover:bg-card"
+            ? "border-signal/50 bg-signal-soft"
+            : "border-border/70 bg-card/70 hover:border-foreground/15 hover:bg-secondary/60"
         }`}
       >
-        <span className={`absolute inset-y-3 left-0 w-0.5 rounded-r-full transition-colors ${selectedId === run.id ? "bg-signal" : "bg-transparent group-hover:bg-foreground/15"}`} aria-hidden="true" />
-        <div className="flex items-center justify-between gap-3">
-          <span className="flex items-center gap-2 rounded-full bg-secondary/80 px-2 py-1 text-[9px] text-steel">
+        <div className="flex items-center justify-between gap-2">
+          <span className="flex items-center gap-1.5 text-[9px] text-steel">
             <RunStatus status={run.status} /> {statusLabel}
           </span>
           <span className="num text-[8px] tracking-[0.08em] text-muted-foreground">#{run.id.slice(-6)}</span>
         </div>
-        <p className="mt-3 truncate text-[12.5px] font-medium tracking-[-0.015em]" title={run.model.name}>{readableFileName(run.model.name)}</p>
-        <p className="mt-1 truncate text-[10px] text-muted-foreground" title={run.source.name}>{readableFileName(run.source.name)}</p>
-        <div className="mt-3.5 flex items-center justify-between border-t border-border/70 pt-2.5 text-[9px] text-muted-foreground">
+        <p className="mt-2 truncate text-[12px] font-medium tracking-[-0.015em]" title={run.model.name}>{readableFileName(run.model.name)}</p>
+        <p className="mt-0.5 truncate text-[9px] text-muted-foreground" title={run.source.name}>{readableFileName(run.source.name)}</p>
+        <div className="mt-2 flex items-center justify-between text-[9px] text-muted-foreground">
           <span>{runDateFormatter.format(new Date(run.started_at))}</span>
-          <span className={`num rounded-full bg-secondary px-1.5 py-0.5 ${run.status === "failed" ? "text-failed" : "text-steel"}`}>
+          <span className={`num ${run.status === "failed" ? "text-failed" : "text-steel"}`}>
             {run.metrics ? `${Math.round(run.metrics.robustness_score)} / 100` : `${run.progress}%`}
           </span>
         </div>
@@ -210,31 +206,18 @@ function RunsSidebar({
           <ChevronDown className="ml-auto size-4 text-muted-foreground transition-transform group-open:rotate-180" />
         </summary>
         <div className="max-h-80 space-y-1 overflow-y-auto border-t border-border p-2.5">
-          <div className="mb-2 flex items-center justify-between px-1 text-[10px] text-muted-foreground">
-            <span>Select a previous test</span>
-            <button type="button" onClick={onRefresh} className="flex size-8 items-center justify-center rounded-md hover:bg-secondary hover:text-foreground" aria-label="Refresh recent tests">
-              <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
-            </button>
-          </div>
+          <p className="mb-2 px-1 text-[10px] text-muted-foreground">Select a previous test</p>
           {runItems}
           {!runs.length && !loading && <p className="p-3 text-xs text-muted-foreground">Completed tests will appear here.</p>}
         </div>
       </details>
 
       <div className="hidden h-full lg:block">
-      <div className="flex h-12 items-center justify-between border-b border-border px-3.5">
+      <div className="flex h-12 items-center border-b border-border px-3.5">
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium">Recent tests</span>
           <span className="num rounded-sm bg-secondary px-1.5 py-0.5 text-[9px] text-steel">{runs.length}</span>
         </div>
-        <button
-          type="button"
-          onClick={onRefresh}
-          className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-          aria-label="Refresh recent tests"
-        >
-          <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
-        </button>
       </div>
       <div className="scrollbar-thin h-[calc(100%-3rem)] space-y-2 overflow-y-auto p-2.5 [content-visibility:auto]">
         {runItems}
@@ -652,19 +635,6 @@ export function CVFuzzDashboard() {
   const [error, setError] = useState<string | null>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
-  const refreshRuns = useCallback(async () => {
-    setLoadingRuns(true)
-    try {
-      setRuns(await getRuns())
-      setApiState("online")
-    } catch (cause) {
-      setApiState("offline")
-      setError(cause instanceof Error ? cause.message : "Could not load runs")
-    } finally {
-      setLoadingRuns(false)
-    }
-  }, [])
-
   const selectRun = useCallback(async (id: string) => {
     setSelectedId(id)
     setError(null)
@@ -758,7 +728,7 @@ export function CVFuzzDashboard() {
       />
       <div className={`grid min-w-0 grid-cols-[minmax(0,1fr)] transition-[grid-template-columns] duration-300 ease-out ${sidebarCollapsed ? "lg:grid-cols-[0_minmax(0,1fr)]" : "lg:grid-cols-[232px_minmax(0,1fr)]"}`}>
         <div className={`min-w-0 transition-opacity duration-200 ${sidebarCollapsed ? "lg:invisible lg:opacity-0" : "lg:visible lg:opacity-100"}`}>
-          <RunsSidebar runs={runs} selectedId={selectedId} loading={loadingRuns} onSelect={(id) => void selectRun(id)} onRefresh={() => void refreshRuns()} />
+          <RunsSidebar runs={runs} selectedId={selectedId} loading={loadingRuns} onSelect={(id) => void selectRun(id)} />
         </div>
         <main id="main-content" tabIndex={-1} className="min-w-0 px-3 sm:px-5 xl:px-7">
           {!initialLoaded ? (
