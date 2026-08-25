@@ -74,11 +74,11 @@ export function FileDropzone({ kind, file, onFile, previewSrc, previewLoading = 
       </div>
 
       {file ? (
-        <div className="flex min-h-40 flex-col justify-between p-4">
-          <div className="flex items-center justify-between gap-4">
-            <span className="relative flex size-12 items-center justify-center overflow-hidden rounded-md border border-stable/30 bg-stable/5 text-stable">
+        <div className="relative flex min-h-40 flex-col items-center justify-center p-4 text-center">
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex size-11 items-center justify-center overflow-hidden rounded-md border border-stable/30 bg-stable/5 text-stable">
               {kind === "video" && previewSrc ? (
-                <Image src={previewSrc} alt="First frame of selected source video" fill unoptimized sizes="48px" className="object-cover" />
+                <Image src={previewSrc} alt="First frame of selected source video" fill unoptimized sizes="44px" className="object-cover" />
               ) : previewLoading ? (
                 <Film className="size-4 signal-pulse" />
               ) : (
@@ -87,33 +87,31 @@ export function FileDropzone({ kind, file, onFile, previewSrc, previewLoading = 
             </span>
             <span className="text-[11px] font-medium text-stable">Ready</span>
           </div>
-          <div className="flex items-end justify-between gap-4 pt-10">
-            <div className="min-w-0">
-              <p className="truncate text-[15px] font-medium tracking-[-0.02em]">{file.name}</p>
-              <p className="mt-1.5 text-[11px] text-muted-foreground">
-                {formatBytes(file.size)} · Stored locally
-              </p>
-            </div>
-            <button
-              type="button"
-              className="flex size-8 shrink-0 items-center justify-center rounded-md border border-input text-muted-foreground transition-colors hover:border-destructive/50 hover:bg-destructive/5 hover:text-destructive"
-              onClick={() => onFile(null)}
-              aria-label={`Remove ${kind} file`}
-            >
-              <X className="size-3.5" />
-            </button>
+          <div className="mt-4 min-w-0 max-w-full">
+            <p className="truncate text-[15px] font-medium tracking-[-0.02em]">{file.name}</p>
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
+              {formatBytes(file.size)} · Stored locally
+            </p>
           </div>
+          <button
+            type="button"
+            className="absolute bottom-3 right-3 flex size-8 items-center justify-center rounded-md border border-input text-muted-foreground transition-colors hover:border-destructive/50 hover:bg-destructive/5 hover:text-destructive"
+            onClick={() => onFile(null)}
+            aria-label={`Remove ${kind} file`}
+          >
+            <X className="size-3.5" />
+          </button>
         </div>
       ) : (
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          className="flex min-h-40 w-full flex-col items-start justify-between p-4 text-left"
+          className="flex min-h-40 w-full flex-col items-center justify-center p-4 text-center"
         >
           <span className="flex size-10 items-center justify-center rounded-md border border-input bg-secondary text-muted-foreground transition-[transform,border-color,color] duration-200 group-hover:-translate-y-0.5 group-hover:border-white/25 group-hover:text-foreground">
             {dragging ? <Icon className="size-4" /> : <Upload className="size-4" />}
           </span>
-          <span>
+          <span className="mt-4">
             <span className="block text-[15px] font-medium tracking-[-0.02em]">
               {dragging ? "Release to ingest" : details.title}
             </span>

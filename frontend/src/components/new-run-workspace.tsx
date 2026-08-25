@@ -7,7 +7,6 @@ import {
   Check,
   ChevronDown,
   CircleStop,
-  Gauge,
   ImageIcon,
   Play,
   SlidersHorizontal,
@@ -497,12 +496,16 @@ function AugmentationCard({
   frameLoading,
   onToggle,
   onParameter,
+  onReset,
+  resetAvailable,
 }: {
   transform: TransformConfig
   frame: string | null
   frameLoading: boolean
   onToggle: () => void
   onParameter: (name: string, value: ParameterValue) => void
+  onReset: () => void
+  resetAvailable: boolean
 }) {
   return (
     <motion.article
@@ -572,6 +575,16 @@ function AugmentationCard({
               onChange={(next) => onParameter(name, next)}
             />
           ))}
+          <div className="flex justify-end border-t border-border/70 pt-3">
+            <button
+              type="button"
+              disabled={!resetAvailable}
+              onClick={onReset}
+              className="border border-input px-2.5 py-1.5 font-mono text-[8px] uppercase tracking-[.1em] text-muted-foreground transition-colors hover:border-signal hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Reset to defaults
+            </button>
+          </div>
         </div>
       </details>
     </motion.article>
@@ -609,9 +622,38 @@ export function NewRunWorkspace({
     : "Source frame dimensions"
   const stageCount = enabled.length + 1
   const summary = `${stageCount} stages · ${selectedDevice?.name || "Automatic"} · batch ${batchSize} · ${imageSize ? `${imageSize}px` : "source size"}`
+  const [runtimeOpen, setRuntimeOpen] = useState(false)
+  const [advancedOpen, setAdvancedOpen] = useState(false)
+  const defaultsRef = useRef<Record<string, Record<string, unknown>>>({})
+  const [changedTransforms, setChangedTransforms] = useState<Set<string>>(() => new Set())
 
   const updateTransform = (id: string, update: (transform: TransformConfig) => TransformConfig) => {
     onTransforms(transforms.map((transform) => transform.id === id ? update(transform) : transform))
+  }
+
+  const resetParameters = (id: string) => {
+    const defaults = defaultsRef.current[id]
+    if (!defaults) return
+    updateTransform(id, (current) => ({ ...current, parameters: { ...defaults } }))
+    setChangedTransforms((current) => {
+      const next = new Set(current)
+      next.delete(id)
+      return next
+    })
+  }
+
+  const updateParameter = (id: string, name: string, value: ParameterValue) => {
+    const transform = transforms.find((item) => item.id === id)
+    if (!transform) return
+    const defaults = defaultsRef.current[id] ||= { ...transform.parameters }
+    const parameters = { ...transform.parameters, [name]: value }
+    updateTransform(id, (current) => ({ ...current, parameters }))
+    setChangedTransforms((current) => {
+      const next = new Set(current)
+      if (JSON.stringify(parameters) === JSON.stringify(defaults)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   }
 
   return (
@@ -620,9 +662,9 @@ export function NewRunWorkspace({
       animate={{ opacity: 1, y: 0 }}
       className="mx-auto max-w-[1280px] px-0 pb-16 pt-10 md:px-4 md:pt-16"
     >
-      <header className="relative mb-11 overflow-hidden border-b border-border pb-10 text-center">
+      <section className="relative py-10 sm:py-12" aria-labelledby="inputs-heading">
         <div className="pointer-events-none absolute left-1/2 top-0 size-64 -translate-x-1/2 rounded-full bg-signal/10 blur-3xl" />
-        <div className="relative mx-auto max-w-3xl">
+        <div className="relative mx-auto max-w-3xl text-center">
           <h1 className="text-balance text-[clamp(2.7rem,6.4vw,5.25rem)] font-normal leading-[.9] tracking-[-0.065em]">
             Build a robustness run.
           </h1>
@@ -630,33 +672,41 @@ export function NewRunWorkspace({
             Upload a detector and source clip, then configure the conditions that reveal where your model holds up — and where it fails.
           </p>
         </div>
-      </header>
-
-      <section aria-labelledby="inputs-heading">
-        <div className="mb-4 flex items-end justify-between gap-4 border-b border-border pb-3">
-          <div>
-            <p className="section-kicker">Input files</p>
-            <h2 id="inputs-heading" className="mt-1.5 text-lg tracking-[-.025em]">Model and source</h2>
+        <div className="relative mx-auto mt-10 max-w-5xl">
+          <div className="mb-4 flex items-end justify-between gap-4 border-b border-border pb-3">
+            <h2 id="inputs-heading" className="text-lg tracking-[-.025em]">Model and source</h2>
+            <span className="hidden font-mono text-[8px] uppercase tracking-[.13em] text-muted-foreground sm:block">Local files · never uploaded to a cloud service</span>
           </div>
-          <span className="hidden font-mono text-[8px] uppercase tracking-[.13em] text-muted-foreground sm:block">Local files · never uploaded to a cloud service</span>
+          <div className="grid gap-3 md:grid-cols-2">
+            <FileDropzone kind="model" file={model} onFile={onModel} />
+            <FileDropzone kind="video" file={video} onFile={onVideo} previewSrc={frame} previewLoading={frameLoading} />
+          </div>
         </div>
-        <div className="grid gap-3 md:grid-cols-2">
-          <FileDropzone kind="model" file={model} onFile={onModel} />
-          <FileDropzone kind="video" file={video} onFile={onVideo} previewSrc={frame} previewLoading={frameLoading} />
-        </div>
-      </section>
 
       {ready ? (
-        <>
-          <section className="mt-12" aria-labelledby="runtime-heading">
-            <div className="mb-4 flex items-end justify-between gap-4 border-b border-border pb-3">
-              <div>
-                <p className="section-kicker">Runtime</p>
-                <h2 id="runtime-heading" className="mt-1.5 text-lg tracking-[-.025em]">Inference setup</h2>
-              </div>
-              <Gauge className="size-4 text-muted-foreground" />
-            </div>
-            <div className="grid border border-border bg-card md:grid-cols-3">
+        <div className="mx-auto mt-7 max-w-5xl text-center">
+          <p className="text-[12px] text-steel">Files attached. You can run with the recommended defaults or fine-tune below.</p>
+          <Button size="lg" disabled={running || enabled.length === 0} onClick={onRun} className="mt-4 min-w-56 rounded-none">
+            {running ? <><CircleStop className="size-4 signal-pulse" /> Running {progress}%</> : <><Play className="size-3.5 fill-current" /> Start run</>}
+          </Button>
+
+          <section className="mt-8 text-left" aria-labelledby="runtime-heading">
+            <button
+              type="button"
+              onClick={() => setRuntimeOpen((open) => !open)}
+              aria-expanded={runtimeOpen}
+              aria-controls="runtime-controls"
+              className="flex w-full items-center gap-4 border border-border bg-background px-4 py-3 text-left transition-colors hover:border-foreground/20 hover:bg-secondary/40"
+            >
+              <span className="min-w-0 flex-1">
+                <span id="runtime-heading" className="block text-[13px] font-medium">Run settings</span>
+                <span className="mt-1 block truncate font-mono text-[9px] text-muted-foreground">{summary}</span>
+              </span>
+              <span className="hidden text-[10px] text-muted-foreground sm:block">Customize</span>
+              <ChevronDown className={`size-4 shrink-0 text-muted-foreground transition-transform ${runtimeOpen ? "rotate-180" : ""}`} />
+            </button>
+            {runtimeOpen && (
+              <div id="runtime-controls" className="grid border-x border-b border-border bg-card md:grid-cols-3">
               <div className="border-b border-border p-4 md:border-b-0 md:border-r">
                 <RuntimeSelect devices={devices} device={device} disabled={!supportsDeviceSelection} onDevice={onDevice} />
                 <p className="mt-2 min-h-8 text-[10px] leading-4 text-muted-foreground">
@@ -669,69 +719,64 @@ export function NewRunWorkspace({
               <div className="p-4">
                 <ImageSizePreset value={imageSize} sourceLabel={sourceLabel} disabled={false} onChange={onImageSize} />
               </div>
-            </div>
-          </section>
-
-          <section className="mt-12" aria-labelledby="augmentations-heading">
-            <div className="mb-4 flex flex-wrap items-end justify-between gap-4 border-b border-border pb-3">
-              <div>
-                <p className="section-kicker">Augmentations</p>
-                <h2 id="augmentations-heading" className="mt-1.5 text-lg tracking-[-.025em]">First-frame condition lab</h2>
-              </div>
-              <div className="flex items-center gap-2 font-mono text-[8px] uppercase tracking-[.12em] text-muted-foreground">
-                <Sparkles className="size-3.5 text-signal" /> {enabled.length} of {transforms.length} enabled
-              </div>
-            </div>
-            {transforms.length ? (
-              <div className="grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {transforms.map((transform) => (
-                  <AugmentationCard
-                    key={transform.id}
-                    transform={transform}
-                    frame={frame}
-                    frameLoading={frameLoading}
-                    onToggle={() => updateTransform(transform.id, (current) => ({ ...current, enabled: !current.enabled }))}
-                    onParameter={(name, value) => updateTransform(transform.id, (current) => ({
-                      ...current,
-                      parameters: { ...current.parameters, [name]: value },
-                    }))}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="border border-dashed border-border bg-card px-5 py-10 text-center">
-                <SlidersHorizontal className="mx-auto size-5 text-muted-foreground" />
-                <p className="mt-3 text-[12px]">Augmentation configuration is unavailable.</p>
-                <p className="mt-1 text-[10px] text-muted-foreground">Start the local CVFuzz API, then refresh this page.</p>
               </div>
             )}
           </section>
 
-          <section className="mt-10 border border-signal/25 bg-[linear-gradient(105deg,rgba(215,250,3,.1),transparent_48%)] p-4 sm:flex sm:items-center sm:gap-5 sm:p-5" aria-label="Run summary">
-            <div className="min-w-0 flex-1">
-              <p className="section-kicker text-signal">Run ready</p>
-              <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground">{summary}</p>
-            </div>
-            <Button size="lg" disabled={running || enabled.length === 0} onClick={onRun} className="mt-4 min-w-52 rounded-none sm:mt-0">
-              {running ? <><CircleStop className="size-4 signal-pulse" /> Running {progress}%</> : <><Play className="size-3.5 fill-current" /> Start run</>}
-            </Button>
+          <section className="mt-3 text-left" aria-labelledby="augmentations-heading">
+            <button
+              type="button"
+              onClick={() => setAdvancedOpen((open) => !open)}
+              aria-expanded={advancedOpen}
+              aria-controls="augmentation-controls"
+              className="flex w-full items-center gap-4 border border-border bg-background px-4 py-3 text-left transition-colors hover:border-foreground/20 hover:bg-secondary/40"
+            >
+              <Sparkles className="size-4 shrink-0 text-signal" />
+              <span className="min-w-0 flex-1">
+                <span id="augmentations-heading" className="block text-[13px] font-medium">Advanced augmentation tuning</span>
+                <span className="mt-1 block font-mono text-[9px] text-muted-foreground">{enabled.length} of {transforms.length} conditions enabled</span>
+              </span>
+              <span className="hidden text-[10px] text-muted-foreground sm:block">Optional</span>
+              <ChevronDown className={`size-4 shrink-0 text-muted-foreground transition-transform ${advancedOpen ? "rotate-180" : ""}`} />
+            </button>
+            {advancedOpen && (
+              <div id="augmentation-controls" className="mt-3">
+                {transforms.length ? (
+                  <div className="grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {transforms.map((transform) => (
+                      <AugmentationCard
+                        key={transform.id}
+                        transform={transform}
+                        frame={frame}
+                        frameLoading={frameLoading}
+                        onToggle={() => updateTransform(transform.id, (current) => ({ ...current, enabled: !current.enabled }))}
+                        onParameter={(name, value) => updateParameter(transform.id, name, value)}
+                        onReset={() => resetParameters(transform.id)}
+                        resetAvailable={changedTransforms.has(transform.id)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="border border-dashed border-border bg-card px-5 py-10 text-center">
+                    <SlidersHorizontal className="mx-auto size-5 text-muted-foreground" />
+                    <p className="mt-3 text-[12px]">Augmentation configuration is unavailable.</p>
+                    <p className="mt-1 text-[10px] text-muted-foreground">Start the local CVFuzz API, then refresh this page.</p>
+                  </div>
+                )}
+              </div>
+            )}
           </section>
+
           {(running || error) && (
-            <div role={error ? "alert" : "status"} aria-live="polite" className={`mt-3 border px-4 py-2 font-mono text-[8px] uppercase tracking-[.1em] ${error ? "border-failed/30 bg-failed/5 text-failed" : "border-border bg-card text-muted-foreground"}`}>
+            <div role={error ? "alert" : "status"} aria-live="polite" className={`mt-3 border px-4 py-2 text-left font-mono text-[8px] uppercase tracking-[.1em] ${error ? "border-failed/30 bg-failed/5 text-failed" : "border-border bg-card text-muted-foreground"}`}>
               <div className="flex items-center gap-3"><span className="truncate">{error ?? progressLabel}</span><span className="ml-auto">{error ? "Needs attention" : `${progress}%`}</span></div>
             </div>
           )}
-        </>
+        </div>
       ) : (
-        <section className="mx-auto mt-10 max-w-2xl border-t border-border pt-7 text-center" aria-label="Configuration availability">
-          <p className="section-kicker text-signal">Next step</p>
-          <p className="mt-2 text-[12px] text-steel">Attach both files to unlock runtime controls and the nine-condition augmentation lab.</p>
-          <div className="mt-4 flex justify-center gap-5 font-mono text-[9px] uppercase tracking-[.12em] text-muted-foreground">
-            <span className="flex items-center gap-1.5"><span className={`size-1.5 rounded-full ${model ? "bg-stable" : "border border-queued"}`} /> Model</span>
-            <span className="flex items-center gap-1.5"><span className={`size-1.5 rounded-full ${video ? "bg-stable" : "border border-queued"}`} /> Video</span>
-          </div>
-        </section>
+        <p className="mx-auto mt-7 max-w-xl text-center text-[12px] text-steel">Add a model and source clip to continue. CVFuzz will keep the recommended settings ready for you.</p>
       )}
+      </section>
     </motion.div>
   )
 }

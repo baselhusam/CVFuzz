@@ -67,9 +67,9 @@
   --destructive: #c93749;
   --border: rgba(11, 14, 18, 0.11);
   --input: rgba(11, 14, 18, 0.17);
-  --ring: #718500;
-  --signal: #718500;
-  --signal-soft: rgba(113, 133, 0, 0.1);
+  --ring: #c4e400;
+  --signal: #c4e400;
+  --signal-soft: rgba(196, 228, 0, 0.14);
   --stable: #247a43;
   --degraded: #9b5b00;
   --failed: #c93749;
