@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import { Select } from "@base-ui/react/select"
-import { AnimatePresence, motion } from "framer-motion"
+import { motion } from "framer-motion"
 import {
   Check,
   ChevronDown,
@@ -240,7 +240,7 @@ function NumericPreset({
   return (
     <fieldset disabled={disabled}>
       <legend className="metric-label">{label}</legend>
-      <div className="mt-3 grid grid-cols-5 gap-1.5">
+      <div className="mt-3 grid grid-cols-4 gap-1.5">
         {presets.map((preset) => (
           <button
             type="button"
@@ -258,23 +258,24 @@ function NumericPreset({
             {preset}
           </button>
         ))}
-        <label className={`relative flex h-9 items-center border bg-background ${custom ? "border-signal" : "border-input"}`}>
-          <input
-            type="number"
-            min={min}
-            max={max}
-            ref={customInput}
-            defaultValue={custom ? value : ""}
-            placeholder="···"
-            onChange={(event) => {
-              const next = Number(event.target.value)
-              if (Number.isFinite(next) && next >= min && next <= max) onChange(next)
-            }}
-            aria-label={`Custom ${label.toLowerCase()}`}
-            className="num h-full min-w-0 w-full bg-transparent px-1.5 text-center text-[10px] outline-none placeholder:text-muted-foreground"
-          />
-        </label>
       </div>
+      <label className={`mt-2 flex h-9 items-center border bg-background ${custom ? "border-signal" : "border-input"}`}>
+        <span className="num border-r border-inherit px-2.5 text-[8px] uppercase tracking-[.1em] text-muted-foreground">Custom</span>
+        <input
+          type="number"
+          min={min}
+          max={max}
+          ref={customInput}
+          defaultValue={custom ? value : ""}
+          placeholder={`Enter ${label.toLowerCase()}`}
+          onChange={(event) => {
+            const next = Number(event.target.value)
+            if (Number.isFinite(next) && next >= min && next <= max) onChange(next)
+          }}
+          aria-label={`Custom ${label.toLowerCase()}`}
+          className="num h-full min-w-0 flex-1 bg-transparent px-2.5 text-[10px] outline-none placeholder:text-muted-foreground"
+        />
+      </label>
       <p className="mt-2 text-[10px] leading-4 text-muted-foreground">
         {custom ? `Custom value: ${value} ${suffix}` : `${value} ${suffix}`} · choose a preset or type your own
       </p>
@@ -299,7 +300,7 @@ function ImageSizePreset({
   return (
     <fieldset disabled={disabled}>
       <legend className="metric-label">Inference image size</legend>
-      <div className="mt-3 grid grid-cols-5 gap-1.5">
+      <div className="mt-3 grid grid-cols-4 gap-1.5">
         <button
           type="button"
           onClick={() => {
@@ -323,23 +324,24 @@ function ImageSizePreset({
             {preset}
           </button>
         ))}
-        <label className={`relative flex h-9 items-center border bg-background ${custom ? "border-signal" : "border-input"}`}>
-          <input
-            type="number"
-            min={32}
-            max={4096}
-            ref={customInput}
-            defaultValue={custom ? value : ""}
-            placeholder="···"
-            onChange={(event) => {
-              const next = Number(event.target.value)
-              if (Number.isFinite(next) && next >= 32 && next <= 4096) onChange(next)
-            }}
-            aria-label="Custom inference image size"
-            className="num h-full min-w-0 w-full bg-transparent px-1.5 text-center text-[10px] outline-none placeholder:text-muted-foreground"
-          />
-        </label>
       </div>
+      <label className={`mt-2 flex h-9 items-center border bg-background ${custom ? "border-signal" : "border-input"}`}>
+        <span className="num border-r border-inherit px-2.5 text-[8px] uppercase tracking-[.1em] text-muted-foreground">Custom</span>
+        <input
+          type="number"
+          min={32}
+          max={4096}
+          ref={customInput}
+          defaultValue={custom ? value : ""}
+          placeholder="Enter pixels, e.g. 1024"
+          onChange={(event) => {
+            const next = Number(event.target.value)
+            if (Number.isFinite(next) && next >= 32 && next <= 4096) onChange(next)
+          }}
+          aria-label="Custom inference image size"
+          className="num h-full min-w-0 flex-1 bg-transparent px-2.5 text-[10px] outline-none placeholder:text-muted-foreground"
+        />
+      </label>
       <p className="mt-2 truncate text-[10px] leading-4 text-muted-foreground" title={sourceLabel}>
         {value === null ? sourceLabel : `${value} × ${value} square input`} · preset or custom pixels
       </p>
@@ -616,19 +618,16 @@ export function NewRunWorkspace({
     <motion.div
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      className="mx-auto max-w-[1240px] px-0 pb-28 pt-7 md:px-2 md:pt-11"
+      className="mx-auto max-w-[1280px] px-0 pb-16 pt-10 md:px-4 md:pt-16"
     >
-      <header className="relative mb-9 overflow-hidden border-b border-border pb-8">
-        <div className="pointer-events-none absolute -right-12 -top-16 size-52 rounded-full bg-signal/8 blur-3xl" />
-        <div className="relative grid items-end gap-6 lg:grid-cols-[minmax(0,1fr)_310px]">
-          <div>
-            <p className="section-kicker text-signal">Run configuration / 01</p>
-            <h1 className="mt-4 max-w-3xl text-balance text-[clamp(2.35rem,6vw,4.7rem)] font-normal leading-[.92] tracking-[-0.06em]">
-              Build a robustness run.
-            </h1>
-          </div>
-          <p className="max-w-sm text-[12px] leading-5 text-steel lg:pb-1">
-            Upload a detector and source clip, choose how inference runs, then inspect every augmentation on the clip’s first frame before committing compute.
+      <header className="relative mb-11 overflow-hidden border-b border-border pb-10 text-center">
+        <div className="pointer-events-none absolute left-1/2 top-0 size-64 -translate-x-1/2 rounded-full bg-signal/10 blur-3xl" />
+        <div className="relative mx-auto max-w-3xl">
+          <h1 className="text-balance text-[clamp(2.7rem,6.4vw,5.25rem)] font-normal leading-[.9] tracking-[-0.065em]">
+            Build a robustness run.
+          </h1>
+          <p className="mx-auto mt-5 max-w-2xl text-pretty text-[13px] leading-6 text-steel">
+            Upload a detector and source clip, then configure the conditions that reveal where your model holds up — and where it fails.
           </p>
         </div>
       </header>
@@ -636,7 +635,7 @@ export function NewRunWorkspace({
       <section aria-labelledby="inputs-heading">
         <div className="mb-4 flex items-end justify-between gap-4 border-b border-border pb-3">
           <div>
-            <p className="section-kicker">01 / Inputs</p>
+            <p className="section-kicker">Input files</p>
             <h2 id="inputs-heading" className="mt-1.5 text-lg tracking-[-.025em]">Model and source</h2>
           </div>
           <span className="hidden font-mono text-[8px] uppercase tracking-[.13em] text-muted-foreground sm:block">Local files · never uploaded to a cloud service</span>
@@ -647,99 +646,92 @@ export function NewRunWorkspace({
         </div>
       </section>
 
-      <section className="mt-10" aria-labelledby="runtime-heading">
-        <div className="mb-4 flex items-end justify-between gap-4 border-b border-border pb-3">
-          <div>
-            <p className="section-kicker">02 / Runtime</p>
-            <h2 id="runtime-heading" className="mt-1.5 text-lg tracking-[-.025em]">Inference setup</h2>
-          </div>
-          <Gauge className="size-4 text-muted-foreground" />
-        </div>
-        <div className="grid border border-border bg-card md:grid-cols-3">
-          <div className="border-b border-border p-4 md:border-b-0 md:border-r">
-            <RuntimeSelect devices={devices} device={device} disabled={!supportsDeviceSelection} onDevice={onDevice} />
-            <p className="mt-2 min-h-8 text-[10px] leading-4 text-muted-foreground">
-              {supportsDeviceSelection ? selectedDevice?.description : "CVFuzz chooses the best available accelerator."}
-            </p>
-          </div>
-          <div className="border-b border-border p-4 md:border-b-0 md:border-r">
-            <NumericPreset label="Batch frames" value={batchSize} presets={[1, 2, 4, 8]} min={1} max={64} suffix={batchSize === 1 ? "frame" : "frames"} disabled={!ready} onChange={onBatchSize} />
-          </div>
-          <div className="p-4">
-            <ImageSizePreset value={imageSize} sourceLabel={sourceLabel} disabled={!ready} onChange={onImageSize} />
-          </div>
-        </div>
-      </section>
+      {ready ? (
+        <>
+          <section className="mt-12" aria-labelledby="runtime-heading">
+            <div className="mb-4 flex items-end justify-between gap-4 border-b border-border pb-3">
+              <div>
+                <p className="section-kicker">Runtime</p>
+                <h2 id="runtime-heading" className="mt-1.5 text-lg tracking-[-.025em]">Inference setup</h2>
+              </div>
+              <Gauge className="size-4 text-muted-foreground" />
+            </div>
+            <div className="grid border border-border bg-card md:grid-cols-3">
+              <div className="border-b border-border p-4 md:border-b-0 md:border-r">
+                <RuntimeSelect devices={devices} device={device} disabled={!supportsDeviceSelection} onDevice={onDevice} />
+                <p className="mt-2 min-h-8 text-[10px] leading-4 text-muted-foreground">
+                  {supportsDeviceSelection ? selectedDevice?.description : "CVFuzz chooses the best available accelerator."}
+                </p>
+              </div>
+              <div className="border-b border-border p-4 md:border-b-0 md:border-r">
+                <NumericPreset label="Batch frames" value={batchSize} presets={[1, 2, 4, 8]} min={1} max={64} suffix={batchSize === 1 ? "frame" : "frames"} disabled={false} onChange={onBatchSize} />
+              </div>
+              <div className="p-4">
+                <ImageSizePreset value={imageSize} sourceLabel={sourceLabel} disabled={false} onChange={onImageSize} />
+              </div>
+            </div>
+          </section>
 
-      <section className="mt-10" aria-labelledby="augmentations-heading">
-        <div className="mb-4 flex flex-wrap items-end justify-between gap-4 border-b border-border pb-3">
-          <div>
-            <p className="section-kicker">03 / Augmentations</p>
-            <h2 id="augmentations-heading" className="mt-1.5 text-lg tracking-[-.025em]">First-frame condition lab</h2>
-          </div>
-          <div className="flex items-center gap-2 font-mono text-[8px] uppercase tracking-[.12em] text-muted-foreground">
-            <Sparkles className="size-3.5 text-signal" /> {enabled.length} of {transforms.length} enabled
-          </div>
-        </div>
-        {transforms.length ? (
-          <div className="grid items-start gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {transforms.map((transform) => (
-              <AugmentationCard
-                key={transform.id}
-                transform={transform}
-                frame={frame}
-                frameLoading={frameLoading}
-                onToggle={() => updateTransform(transform.id, (current) => ({ ...current, enabled: !current.enabled }))}
-                onParameter={(name, value) => updateTransform(transform.id, (current) => ({
-                  ...current,
-                  parameters: { ...current.parameters, [name]: value },
-                }))}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="border border-dashed border-border bg-card px-5 py-10 text-center">
-            <SlidersHorizontal className="mx-auto size-5 text-muted-foreground" />
-            <p className="mt-3 text-[12px]">Augmentation configuration is unavailable.</p>
-            <p className="mt-1 text-[10px] text-muted-foreground">Start the local CVFuzz API, then refresh this page.</p>
-          </div>
-        )}
-      </section>
+          <section className="mt-12" aria-labelledby="augmentations-heading">
+            <div className="mb-4 flex flex-wrap items-end justify-between gap-4 border-b border-border pb-3">
+              <div>
+                <p className="section-kicker">Augmentations</p>
+                <h2 id="augmentations-heading" className="mt-1.5 text-lg tracking-[-.025em]">First-frame condition lab</h2>
+              </div>
+              <div className="flex items-center gap-2 font-mono text-[8px] uppercase tracking-[.12em] text-muted-foreground">
+                <Sparkles className="size-3.5 text-signal" /> {enabled.length} of {transforms.length} enabled
+              </div>
+            </div>
+            {transforms.length ? (
+              <div className="grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {transforms.map((transform) => (
+                  <AugmentationCard
+                    key={transform.id}
+                    transform={transform}
+                    frame={frame}
+                    frameLoading={frameLoading}
+                    onToggle={() => updateTransform(transform.id, (current) => ({ ...current, enabled: !current.enabled }))}
+                    onParameter={(name, value) => updateTransform(transform.id, (current) => ({
+                      ...current,
+                      parameters: { ...current.parameters, [name]: value },
+                    }))}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="border border-dashed border-border bg-card px-5 py-10 text-center">
+                <SlidersHorizontal className="mx-auto size-5 text-muted-foreground" />
+                <p className="mt-3 text-[12px]">Augmentation configuration is unavailable.</p>
+                <p className="mt-1 text-[10px] text-muted-foreground">Start the local CVFuzz API, then refresh this page.</p>
+              </div>
+            )}
+          </section>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/92 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-[1472px] flex-wrap items-center gap-4 px-4 py-3 sm:px-6">
-          <div className="min-w-0 flex-1">
-            <p className="section-kicker text-foreground">Ready check</p>
-            <p className="mt-1 truncate font-mono text-[9px] text-muted-foreground">
-              {ready ? summary : "Attach a model and source video to unlock the run"}
-            </p>
-          </div>
-          <div className="hidden items-center gap-4 text-[10px] text-muted-foreground lg:flex">
+          <section className="mt-10 border border-signal/25 bg-[linear-gradient(105deg,rgba(215,250,3,.1),transparent_48%)] p-4 sm:flex sm:items-center sm:gap-5 sm:p-5" aria-label="Run summary">
+            <div className="min-w-0 flex-1">
+              <p className="section-kicker text-signal">Run ready</p>
+              <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground">{summary}</p>
+            </div>
+            <Button size="lg" disabled={running || enabled.length === 0} onClick={onRun} className="mt-4 min-w-52 rounded-none sm:mt-0">
+              {running ? <><CircleStop className="size-4 signal-pulse" /> Running {progress}%</> : <><Play className="size-3.5 fill-current" /> Start run</>}
+            </Button>
+          </section>
+          {(running || error) && (
+            <div role={error ? "alert" : "status"} aria-live="polite" className={`mt-3 border px-4 py-2 font-mono text-[8px] uppercase tracking-[.1em] ${error ? "border-failed/30 bg-failed/5 text-failed" : "border-border bg-card text-muted-foreground"}`}>
+              <div className="flex items-center gap-3"><span className="truncate">{error ?? progressLabel}</span><span className="ml-auto">{error ? "Needs attention" : `${progress}%`}</span></div>
+            </div>
+          )}
+        </>
+      ) : (
+        <section className="mx-auto mt-10 max-w-2xl border-t border-border pt-7 text-center" aria-label="Configuration availability">
+          <p className="section-kicker text-signal">Next step</p>
+          <p className="mt-2 text-[12px] text-steel">Attach both files to unlock runtime controls and the nine-condition augmentation lab.</p>
+          <div className="mt-4 flex justify-center gap-5 font-mono text-[9px] uppercase tracking-[.12em] text-muted-foreground">
             <span className="flex items-center gap-1.5"><span className={`size-1.5 rounded-full ${model ? "bg-stable" : "border border-queued"}`} /> Model</span>
             <span className="flex items-center gap-1.5"><span className={`size-1.5 rounded-full ${video ? "bg-stable" : "border border-queued"}`} /> Video</span>
           </div>
-          <Button size="lg" disabled={!ready || running || enabled.length === 0} onClick={onRun} className="min-w-52 rounded-none">
-            {running ? <><CircleStop className="size-4 signal-pulse" /> Running {progress}%</> : ready ? <><Play className="size-3.5 fill-current" /> Start run</> : "Waiting for files"}
-          </Button>
-        </div>
-        <AnimatePresence>
-          {(running || error) && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              role={error ? "alert" : "status"}
-              aria-live="polite"
-              className={`border-t px-4 py-2 ${error ? "border-failed/30 bg-failed/5 text-failed" : "border-border bg-background text-muted-foreground"}`}
-            >
-              <div className="mx-auto flex max-w-[1440px] items-center gap-3 font-mono text-[8px] uppercase tracking-[.1em]">
-                <span className="truncate">{error ?? progressLabel}</span>
-                <span className="ml-auto">{error ? "Needs attention" : `${progress}%`}</span>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+        </section>
+      )}
     </motion.div>
   )
 }

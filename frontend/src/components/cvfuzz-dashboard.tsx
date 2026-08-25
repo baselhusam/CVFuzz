@@ -111,17 +111,17 @@ function Header({
   const apiTone = apiState === "online" ? "bg-stable" : apiState === "offline" ? "bg-failed" : "border border-queued"
   return (
     <header className="sticky top-0 z-50 flex h-14 items-center gap-3 border-b border-border bg-card/95 px-3 backdrop-blur-xl sm:px-4">
-      <button type="button" onClick={onNewRun} className="group flex shrink-0 items-center gap-2" aria-label="CVFuzz home">
-        <span className="flex size-7 items-center justify-center transition-transform duration-200 group-hover:scale-105">
-          <Image src="/brand/cvfuzz-symbol-light.svg" alt="" width={23} height={23} className="dark:hidden" priority />
-          <Image src="/brand/cvfuzz-symbol-dark.svg" alt="" width={23} height={23} className="hidden dark:block" priority />
+      <button type="button" onClick={onNewRun} className="group flex shrink-0 items-center gap-3 rounded-md border border-transparent px-2 py-1.5 transition-colors hover:border-border hover:bg-secondary/70" aria-label="CVFuzz home">
+        <span className="flex size-8 items-center justify-center border border-signal/30 bg-signal/5 shadow-[inset_0_0_18px_rgba(215,250,3,.08)] transition-transform duration-200 group-hover:scale-105">
+          <Image src="/brand/cvfuzz-symbol-light.svg" alt="" width={21} height={21} className="dark:hidden" priority />
+          <Image src="/brand/cvfuzz-symbol-dark.svg" alt="" width={21} height={21} className="hidden dark:block" priority />
         </span>
-        <span className="border-l border-border/70 pl-2.5 text-left">
+        <span className="min-w-0 text-left">
           <span className="block text-[15px] font-semibold leading-none tracking-[-0.05em] transition-colors group-hover:text-signal">CVFuzz</span>
-          <span className="mt-1 hidden font-mono text-[7px] font-medium uppercase leading-none tracking-[0.18em] text-muted-foreground sm:block">Robustness lab</span>
+          <span className="mt-1 hidden font-mono text-[7px] font-medium uppercase leading-none tracking-[0.2em] text-muted-foreground sm:block">Robustness lab</span>
         </span>
       </button>
-      <span className="hidden h-5 w-px bg-border lg:block" />
+      <span className="hidden h-6 w-px bg-border lg:block" />
       <Tooltip>
         <TooltipTrigger
           render={
