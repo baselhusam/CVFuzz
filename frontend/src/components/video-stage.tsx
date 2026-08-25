@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { LoaderCircle, ScanLine } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
+import { Expand, LoaderCircle, Minimize } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 type VideoStageProps = {
@@ -9,6 +9,7 @@ type VideoStageProps = {
   videoUrl: string
   label: string
   featured?: boolean
+  showFullscreenControl?: boolean
   registerVideo: (id: string, node: HTMLVideoElement | null) => void
   onTimeUpdate?: (time: number, duration: number) => void
 }
@@ -18,12 +19,29 @@ export function VideoStage({
   videoUrl,
   label,
   featured = false,
+  showFullscreenControl = featured,
   registerVideo,
   onTimeUpdate,
 }: VideoStageProps) {
   const [ready, setReady] = useState(false)
+  const [fullscreen, setFullscreen] = useState(false)
+  const stage = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const syncFullscreenState = () => setFullscreen(document.fullscreenElement === stage.current)
+    document.addEventListener("fullscreenchange", syncFullscreenState)
+    return () => document.removeEventListener("fullscreenchange", syncFullscreenState)
+  }, [])
+
+  const toggleFullscreen = async () => {
+    if (!stage.current) return
+    if (document.fullscreenElement === stage.current) await document.exitFullscreen()
+    else await stage.current.requestFullscreen()
+  }
+
   return (
     <div
+      ref={stage}
       className={cn(
         "group/video relative aspect-video overflow-hidden bg-[#030504]",
         featured && "md:min-h-64",
@@ -50,15 +68,17 @@ export function VideoStage({
           <span className="flex items-center gap-2"><LoaderCircle className="size-4 animate-spin" /> Loading video preview…</span>
         </div>
       )}
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,.35),transparent_22%,transparent_75%,rgba(0,0,0,.55))]" />
-      <span className="pointer-events-none absolute left-2.5 top-2.5 size-4 border-l border-t border-white/35" />
-      <span className="pointer-events-none absolute bottom-2.5 right-2.5 size-4 border-b border-r border-signal/80" />
-      <div className="pointer-events-none absolute left-3 top-3 flex items-center gap-2 rounded-sm bg-black/55 px-2 py-1 font-mono text-[8px] uppercase tracking-[0.12em] text-white/75 backdrop-blur-sm">
-        <span className="size-1.5 rounded-full bg-stable" /> Inference overlay
-      </div>
-      <div className="pointer-events-none absolute bottom-3 right-3 flex max-w-[70%] items-center gap-1.5 rounded-sm bg-black/55 px-2 py-1 font-mono text-[8px] uppercase tracking-[0.08em] text-white/70 backdrop-blur-sm">
-        <ScanLine className="size-3" /> <span className="truncate">{label}</span>
-      </div>
+      {showFullscreenControl && (
+        <button
+          type="button"
+          onClick={() => void toggleFullscreen()}
+          className="absolute right-3 top-3 z-20 flex h-7 items-center gap-1.5 border border-white/20 bg-black/60 px-2 font-mono text-[8px] uppercase tracking-[.1em] text-white/80 opacity-0 backdrop-blur-sm transition-opacity hover:border-signal hover:text-white focus-visible:opacity-100 group-hover/video:opacity-100"
+          aria-label={`${fullscreen ? "Exit" : "Expand"} ${label} video`}
+        >
+          {fullscreen ? <Minimize className="size-3" /> : <Expand className="size-3" />}
+          <span className="hidden sm:inline">{fullscreen ? "Close" : "Expand"}</span>
+        </button>
+      )}
     </div>
   )
 }

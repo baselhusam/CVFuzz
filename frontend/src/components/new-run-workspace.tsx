@@ -6,8 +6,8 @@ import { motion } from "framer-motion"
 import {
   Check,
   ChevronDown,
-  CircleStop,
   ImageIcon,
+  LoaderCircle,
   Play,
   SlidersHorizontal,
   Sparkles,
@@ -687,7 +687,7 @@ export function NewRunWorkspace({
         <div className="mx-auto mt-7 max-w-5xl text-center">
           <p className="text-[12px] text-steel">Files attached. You can run with the recommended defaults or fine-tune below.</p>
           <Button size="lg" disabled={running || enabled.length === 0} onClick={onRun} className="mt-4 min-w-56 rounded-none">
-            {running ? <><CircleStop className="size-4 signal-pulse" /> Running {progress}%</> : <><Play className="size-3.5 fill-current" /> Start run</>}
+            {running ? <><LoaderCircle className="size-4 animate-spin" /> Starting run…</> : <><Play className="size-3.5 fill-current" /> Start run</>}
           </Button>
 
           <section className="mt-8 text-left" aria-labelledby="runtime-heading">

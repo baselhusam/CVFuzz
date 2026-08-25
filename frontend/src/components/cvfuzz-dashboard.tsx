@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   Check,
   ChevronDown,
+  Expand,
   LoaderCircle,
   Moon,
   PanelLeftClose,
@@ -21,7 +22,6 @@ import {
 import { useTheme } from "next-themes"
 import { MetricsPanel } from "@/components/metrics-panel"
 import { NewRunWorkspace } from "@/components/new-run-workspace"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { VideoStage } from "@/components/video-stage"
@@ -255,26 +255,47 @@ function ResultCard({
   artifact,
   metric,
   registerVideo,
+  onTimeUpdate,
+  time,
+  duration,
+  playing,
+  onSeek,
+  onTogglePlayback,
+  onFullscreen,
 }: {
   artifact: RunArtifact
   metric: TransformMetrics
   registerVideo: (id: string, node: HTMLVideoElement | null) => void
+  onTimeUpdate: (time: number, duration: number) => void
+  time: number
+  duration: number
+  playing: boolean
+  onSeek: (time: number) => void
+  onTogglePlayback: () => void
+  onFullscreen: () => void
 }) {
   const state = metric.failures > 0 ? "Changes detected" : "No changes detected"
   return (
-    <article className="overflow-hidden rounded-lg border border-border bg-card transition-colors hover:border-foreground/15">
-      <div className="flex items-start justify-between gap-4 border-b border-border px-3.5 py-3">
+    <article className={`group overflow-hidden rounded-xl border bg-card shadow-[0_8px_30px_rgba(0,0,0,.06)] transition-colors hover:border-foreground/25 ${metric.failures ? "border-border" : "border-stable/30"}`}>
+      <div className="flex items-start justify-between gap-4 border-b border-border bg-secondary/20 px-4 py-3.5">
         <div className="min-w-0">
-          <p className={`font-mono text-[8px] uppercase tracking-[0.12em] ${metric.failures ? "text-failed" : "text-stable"}`}>{state}</p>
-          <h3 className="mt-1.5 truncate text-[13px]">{metric.name}</h3>
+          <p className={`flex items-center gap-1.5 font-mono text-[8px] uppercase tracking-[0.12em] ${metric.failures ? "text-failed" : "text-stable"}`}><span className={`size-1.5 rounded-full ${metric.failures ? "bg-failed" : "bg-stable"}`} />{state}</p>
+          <h3 className="mt-1.5 truncate text-[13px] font-medium">{metric.name}</h3>
         </div>
-        <span className="max-w-44 text-right font-mono text-[8px] leading-4 text-muted-foreground">{formatParameters(metric.parameters)}</span>
+        <span className="max-w-36 text-right font-mono text-[8px] leading-4 text-muted-foreground">{formatParameters(metric.parameters)}</span>
       </div>
-      <VideoStage id={artifact.id} videoUrl={artifact.url} label={artifact.name} registerVideo={registerVideo} />
-      <div className="grid grid-cols-3 divide-x divide-border border-t border-border">
-        <div className="p-3"><span className="metric-label">Detections kept</span><p className="num mt-1 text-xs">{metric.retention}%</p></div>
-        <div className="p-3"><span className="metric-label">Confidence change</span><p className={`num mt-1 text-xs ${metric.confidence_delta < 0 ? "text-failed" : ""}`}>{metric.confidence_delta > 0 ? "+" : ""}{metric.confidence_delta}%</p></div>
-        <div className="p-3"><span className="metric-label">Failure events</span><p className="num mt-1 text-xs">{metric.failures}</p></div>
+      <VideoStage id={artifact.id} videoUrl={artifact.url} label={artifact.name} registerVideo={registerVideo} onTimeUpdate={onTimeUpdate} showFullscreenControl={false} />
+      <div className="flex items-center gap-2 border-t border-border bg-card px-3 py-2.5">
+        <button type="button" onClick={onTogglePlayback} className="flex size-7 shrink-0 items-center justify-center rounded-md bg-secondary text-foreground transition-colors hover:bg-signal hover:text-ink" aria-label={playing ? "Pause all synchronized videos" : "Play all synchronized videos"}>{playing ? <Pause className="size-3 fill-current" /> : <Play className="size-3 fill-current" />}</button>
+        <span className="num shrink-0 text-[8px] text-muted-foreground">{formatTime(time)}</span>
+        <input className="timeline-range h-1 min-w-6 flex-1" type="range" min="0" max={Math.max(duration, 1)} step="0.1" value={Math.min(time, duration)} onChange={(event) => onSeek(Number(event.target.value))} aria-label={`Shared playback position for ${metric.name}`} />
+        <span className="num shrink-0 text-[8px] text-muted-foreground">{formatTime(duration)}</span>
+        <button type="button" onClick={onFullscreen} className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground" aria-label={`View ${metric.name} fullscreen`}><Expand className="size-3" /></button>
+      </div>
+      <div className="grid grid-cols-3 divide-x divide-border border-t border-border bg-secondary/15">
+        <div className="p-3"><span className="metric-label">Detections kept</span><p className="num mt-1.5 text-xs">{metric.retention}%</p></div>
+        <div className="p-3"><span className="metric-label">Confidence change</span><p className={`num mt-1.5 text-xs ${metric.confidence_delta < 0 ? "text-failed" : ""}`}>{metric.confidence_delta > 0 ? "+" : ""}{metric.confidence_delta}%</p></div>
+        <div className="p-3"><span className="metric-label">Failure events</span><p className="num mt-1.5 text-xs">{metric.failures}</p></div>
       </div>
     </article>
   )
@@ -286,6 +307,7 @@ function VideoWall({ run }: { run: RunRecord }) {
   const [muted, setMuted] = useState(true)
   const [time, setTime] = useState(0)
   const [duration, setDuration] = useState(run.metrics?.video_duration_seconds || 0)
+  const lastTimelineUpdate = useRef(0)
   const original = run.artifacts.find((item) => item.kind === "original")
   const artifactById = new Map(run.artifacts.map((item) => [item.id, item]))
   const weakest = run.metrics?.transforms.find((item) => item.id === run.metrics?.weakest_transform)
@@ -311,6 +333,24 @@ function VideoWall({ run }: { run: RunRecord }) {
     setTime(next)
     for (const element of videos.current.values()) element.currentTime = next
   }
+  const updateTimeline = useCallback((nextTime: number, nextDuration: number) => {
+    const now = performance.now()
+    if (now - lastTimelineUpdate.current < 100) return
+    lastTimelineUpdate.current = now
+    setTime(nextTime)
+    if (nextDuration) setDuration(nextDuration)
+  }, [])
+  const toggleVideoFullscreen = async (id: string) => {
+    const video = videos.current.get(id)
+    if (!video) return
+    try {
+      if (document.fullscreenElement === video) await document.exitFullscreen()
+      else await video.requestFullscreen()
+    } catch {
+      // A browser can reject fullscreen when it is not allowed by the current context.
+    }
+  }
+  const toggleOriginalFullscreen = () => toggleVideoFullscreen("original")
 
   if (!original || !run.metrics) return null
   const finding = weakest
@@ -320,30 +360,37 @@ function VideoWall({ run }: { run: RunRecord }) {
   return (
     <>
       <section className="py-6 md:py-9">
-        <div className="mb-5 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div className="mb-5">
           <div>
             <p className="section-kicker text-stable">Test complete · #{run.id.slice(-8)}</p>
             <h1 className="mt-2 text-balance text-[clamp(2rem,5vw,3.35rem)] tracking-[-0.05em]">Test results</h1>
             <p className="mt-2 text-[12px] text-muted-foreground">{readableFileName(run.model.name)} · {readableFileName(run.source.name)}</p>
           </div>
-          <Badge variant="outline"><span className="size-1.5 rounded-full bg-stable" /> Saved locally</Badge>
         </div>
 
-        <div className={`mb-4 rounded-lg border p-4 sm:p-5 ${weakest ? "border-failed/30 bg-failed/5" : "border-stable/30 bg-stable/5"}`}>
-          <p className={`text-[10px] font-medium uppercase tracking-[0.1em] ${weakest ? "text-failed" : "text-stable"}`}>{weakest ? "Biggest impact" : "Overall finding"}</p>
-          <h2 className="mt-2 text-xl tracking-[-0.025em]">{weakest ? `${weakest.name} had the biggest impact` : "No major changes were found"}</h2>
-          <p className="mt-2 max-w-3xl text-[12px] leading-5 text-steel">{finding}</p>
+        <div className={`mb-5 rounded-lg border px-4 py-4 sm:px-5 ${weakest ? "border-failed/30 bg-failed/5" : "border-stable/30 bg-stable/5"}`}>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className={`text-[9px] font-medium uppercase tracking-[0.12em] ${weakest ? "text-failed" : "text-stable"}`}>{weakest ? "Key finding" : "Overall finding"}</p>
+              <h2 className="mt-1 text-[17px] tracking-[-0.025em]">{weakest ? `${weakest.name} had the biggest impact` : "No major changes were found"}</h2>
+              <p className="mt-1.5 max-w-3xl text-[11px] leading-5 text-steel">{finding}</p>
+            </div>
+            <dl className="flex shrink-0 divide-x divide-border/70 border-t border-border/70 pt-3 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
+              <div className="pr-5"><dt className="metric-label">Retention</dt><dd className={`num mt-1 text-sm ${weakest ? "text-failed" : "text-stable"}`}>{weakest ? `${weakest.retention}%` : "100%"}</dd></div>
+              <div className="pl-5"><dt className="metric-label">Affected</dt><dd className="num mt-1 text-sm">{weakest ? `${weakest.affected_frames} / ${run.metrics.frames_analyzed}` : "0"}</dd></div>
+            </dl>
+          </div>
         </div>
 
-        <div className="mb-7 grid overflow-hidden rounded-lg border border-border bg-border grid-cols-2 xl:grid-cols-4">
-          <div className="bg-card p-4"><span className="metric-label">Robustness score</span><p className="num mt-2 text-2xl">{Math.round(run.metrics.robustness_score)} <span className="text-sm text-muted-foreground">/ 100</span></p><p className="mt-1 text-[10px] text-muted-foreground">Higher is better</p></div>
-          <div className="border-l border-border bg-card p-4"><span className="metric-label">Most affected</span><p className="mt-2 truncate text-[13px] font-medium">{weakest?.name || "None"}</p><p className="mt-1 text-[10px] text-muted-foreground">Test condition</p></div>
-          <div className="border-t border-border bg-card p-4 xl:border-l xl:border-t-0"><span className="metric-label">Frames tested</span><p className="num mt-2 text-2xl">{run.metrics.frames_analyzed}</p><p className="mt-1 text-[10px] text-muted-foreground">Every frame analyzed</p></div>
-          <div className="border-l border-t border-border bg-card p-4 xl:border-t-0"><span className="metric-label">Test length</span><p className="num mt-2 text-2xl">{formatTime(run.metrics.video_duration_seconds)}</p><p className="mt-1 text-[10px] text-muted-foreground">Source video</p></div>
+        <div className="mb-7 grid grid-cols-2 overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-4">
+          <div className="bg-card p-4 text-center"><span className="metric-label">Robustness score</span><p className="num mt-2 text-2xl">{Math.round(run.metrics.robustness_score)} <span className="text-sm text-muted-foreground">/ 100</span></p><p className="mt-1 text-[10px] text-muted-foreground">Higher is better</p></div>
+          <div className="border-l border-border bg-card p-4 text-center"><span className="metric-label">Most affected</span><p className="mt-2 truncate text-[13px] font-medium">{weakest?.name || "None"}</p><p className="mt-1 text-[10px] text-muted-foreground">Test condition</p></div>
+          <div className="border-t border-border bg-card p-4 text-center sm:border-l sm:border-t-0"><span className="metric-label">Frames tested</span><p className="num mt-2 text-2xl">{run.metrics.frames_analyzed}</p><p className="mt-1 text-[10px] text-muted-foreground">Every frame analyzed</p></div>
+          <div className="border-l border-t border-border bg-card p-4 text-center sm:border-t-0"><span className="metric-label">Test length</span><p className="num mt-2 text-2xl">{formatTime(run.metrics.video_duration_seconds)}</p><p className="mt-1 text-[10px] text-muted-foreground">Source video</p></div>
         </div>
 
         <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-          <div><p className="section-kicker">Video comparison</p><h2 className="mt-2 text-xl tracking-[-0.03em]">Compare the videos</h2><p className="mt-1 text-[11px] text-muted-foreground">Press play to keep every video synchronized.</p></div>
+          <div><p className="section-kicker">Video comparison</p><h2 className="mt-2 text-xl tracking-[-0.03em]">Compare the videos</h2><p className="mt-1 text-[11px] text-muted-foreground">The shared controls synchronize the source and every condition video.</p></div>
           <span className="text-[10px] text-muted-foreground">{run.metrics.frames_analyzed} frames · one shared timeline</span>
         </div>
         <div className="overflow-hidden rounded-lg border border-border bg-card">
@@ -354,24 +401,23 @@ function VideoWall({ run }: { run: RunRecord }) {
             label="Original video"
             featured
             registerVideo={registerVideo}
-            onTimeUpdate={(nextTime, nextDuration) => {
-              setTime(nextTime)
-              if (nextDuration) setDuration(nextDuration)
-            }}
+            onTimeUpdate={updateTimeline}
           />
         </div>
-        <div className="flex items-center gap-3 rounded-b-lg border-x border-b border-border bg-card px-4 py-3">
+        <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
+          <span className="hidden font-mono text-[8px] uppercase tracking-[.12em] text-muted-foreground sm:block">Shared playback</span>
           <button type="button" onClick={togglePlayback} className="flex size-8 items-center justify-center rounded-md bg-signal text-ink" aria-label={playing ? "Pause all videos" : "Play all videos"}>{playing ? <Pause className="size-3.5 fill-current" /> : <Play className="size-3.5 fill-current" />}</button>
           <span className="num w-11 text-[8.5px] text-muted-foreground">{formatTime(time)}</span>
           <input className="timeline-range h-1 flex-1" type="range" min="0" max={Math.max(duration, 1)} step="0.1" value={Math.min(time, duration)} onChange={(event) => seek(Number(event.target.value))} aria-label="Synchronized video timeline" />
           <span className="num w-11 text-[8.5px] text-muted-foreground">{formatTime(duration)}</span>
+          <button type="button" onClick={() => void toggleOriginalFullscreen()} className="flex h-8 items-center justify-center gap-1.5 rounded-md px-2 text-muted-foreground hover:bg-secondary hover:text-foreground" aria-label="View original video fullscreen"><Expand className="size-3.5" /><span className="hidden font-mono text-[8px] uppercase tracking-[.09em] md:inline">Full screen</span></button>
           <button type="button" onClick={toggleMute} className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground" aria-label={muted ? "Unmute original" : "Mute original"}>{muted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}</button>
         </div>
-        <div className="mb-4 mt-8"><p className="section-kicker">Condition results</p><h2 className="mt-2 text-xl tracking-[-0.03em]">Results by condition</h2><p className="mt-1 text-[11px] text-muted-foreground">Each card compares one changed video with the original.</p></div>
-        <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+        <div className="mb-4 mt-8"><p className="section-kicker">Condition results</p><h2 className="mt-2 text-xl tracking-[-0.03em]">Results by condition</h2><p className="mt-1 text-[11px] text-muted-foreground">Every card follows the shared playback controls above.</p></div>
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {run.metrics.transforms.map((metric) => {
             const artifact = artifactById.get(metric.id)
-            return artifact ? <ResultCard key={metric.id} artifact={artifact} metric={metric} registerVideo={registerVideo} /> : null
+            return artifact ? <ResultCard key={metric.id} artifact={artifact} metric={metric} registerVideo={registerVideo} onTimeUpdate={updateTimeline} time={time} duration={duration} playing={playing} onSeek={seek} onTogglePlayback={() => void togglePlayback()} onFullscreen={() => void toggleVideoFullscreen(metric.id)} /> : null
           })}
         </div>
       </section>
@@ -379,55 +425,117 @@ function VideoWall({ run }: { run: RunRecord }) {
   )
 }
 
-function ActiveRun({ run }: { run: RunRecord }) {
+type LiveStage = {
+  id: string
+  label: string
+  parameters: string
+}
+
+function stageDisplayName(run: RunRecord, stages: LiveStage[]) {
+  if (run.phase === "baseline") return "Baseline · original stream"
+  if (run.phase === "preparing") return "Preparing staged evaluation"
+  const index = run.stage_index ? run.stage_index - 2 : 0
+  return stages[index]?.label || run.stage
+}
+
+function ActiveRun({ run, transforms }: { run: RunRecord; transforms: TransformConfig[] }) {
   if (run.status === "completed" && run.metrics) {
     return <><VideoWall run={run} /><MetricsPanel metrics={run.metrics} /></>
   }
-  const stageCounter = run.stage_index && run.stage_total
-    ? `Stage ${run.stage_index} of ${run.stage_total}`
-    : "Full-stream processing"
-  const stageProgress = run.stage_progress ?? run.progress
-  const availableVideos = run.artifacts.filter((artifact) => artifact.kind === "augmentation")
+  const configuredStages: LiveStage[] = transforms
+    .filter((transform) => transform.enabled)
+    .map((transform) => ({
+      id: transform.id,
+      label: transform.name,
+      parameters: formatParameters(transform.parameters),
+    }))
+  const transformTotal = Math.max(0, (run.stage_total ?? 1) - 1)
+  const liveStages = configuredStages.length === transformTotal
+    ? configuredStages
+    : Array.from({ length: transformTotal }, (_, index) => ({
+        id: `condition-${index + 1}`,
+        label: `Condition ${index + 1}`,
+        parameters: "Configured augmentation",
+      }))
+  const stages: LiveStage[] = [{ id: "baseline", label: "Baseline", parameters: "Reference detections" }, ...liveStages]
+  const stageIndex = Math.min(run.stage_index ?? 0, stages.length)
+  const stageProgress = Math.max(0, Math.min(100, run.stage_progress ?? run.progress))
+  const activeStage = stages[Math.max(0, stageIndex - 1)]
+  const frameTotal = run.source.declared_frames
+  const estimatedFrames = frameTotal ? Math.min(frameTotal, Math.round(frameTotal * stageProgress / 100)) : null
+  const phaseLabel = run.phase === "baseline"
+    ? "baseline inference"
+    : run.phase === "processing"
+      ? "render → inference → match"
+      : run.phase === "preparing"
+        ? "validating source and runtime"
+        : "connecting to local runner"
+  const readyArtifacts = run.artifacts.filter((artifact) => artifact.kind === "original" || artifact.kind === "augmentation")
+  const running = run.status === "running" || run.status === "queued"
+  const failed = run.status === "failed"
+  const activeTitle = stageDisplayName(run, liveStages)
+  const activeParameters = activeStage?.parameters || "Local run initialization"
+
   return (
-    <div className="evidence-grid mx-auto my-8 flex min-h-[calc(100vh-12rem)] max-w-5xl items-center justify-center rounded-[1.25rem] border border-border p-5">
-      <div className="w-full max-w-3xl rounded-[1.15rem] border border-border bg-card p-7 text-center shadow-[0_22px_60px_rgba(11,14,18,.08)] md:p-10">
-        {run.status === "failed" ? (
-          <span className="mx-auto flex size-10 items-center justify-center rounded-md border border-failed/30 bg-failed/5 text-failed"><AlertTriangle className="size-5" /></span>
-        ) : (
-          <span className="mx-auto flex size-10 items-center justify-center rounded-md border border-signal/30 bg-signal-soft text-signal"><LoaderCircle className="size-5 animate-spin" /></span>
-        )}
-        <p className="section-kicker mt-5">Run #{run.id.slice(-8)}</p>
-        <h1 className="mt-3 text-2xl tracking-[-0.035em]">{run.status === "failed" ? "The run stopped" : run.stage}</h1>
-        <p className="mx-auto mt-3 max-w-xl text-xs leading-5 text-muted-foreground">{run.error || `${run.model.name} × ${run.source.name}`}</p>
-        {run.status !== "failed" && (
-          <div className="mx-auto mt-8 max-w-xl">
-            <div className="mb-2 flex justify-between font-mono text-[8.5px] uppercase tracking-[0.1em] text-muted-foreground"><span>{stageCounter}</span><span>{stageProgress}%</span></div>
-            <div className="h-1 overflow-hidden rounded-full bg-secondary"><motion.div className="h-full bg-signal" animate={{ width: `${stageProgress}%` }} /></div>
+    <div className="mx-auto max-w-6xl py-7 md:py-10">
+      <section className={`overflow-hidden border bg-card ${failed ? "border-failed/40" : "border-border"}`} aria-labelledby="live-run-heading">
+        <div className="border-b border-border px-5 py-7 text-center md:px-7 md:py-9">
+          <div className="mx-auto max-w-2xl">
+            <p className={`section-kicker inline-flex items-center gap-2 ${failed ? "text-failed" : "text-signal"}`}>
+              {failed ? <AlertTriangle className="size-3" /> : <LoaderCircle className="size-3 animate-spin" />}
+              {failed ? "Run needs attention" : `${run.status === "queued" ? "Queued" : "Executing"} · ${stageIndex || 0} of ${stages.length} stages`}
+            </p>
+            <h1 id="live-run-heading" className="mt-3 text-balance text-[clamp(2rem,4vw,3.25rem)] tracking-[-0.05em]">
+              {failed ? "The run stopped" : activeTitle}
+            </h1>
+            <p className="mt-3 font-mono text-[10px] leading-5 text-muted-foreground">
+              {failed ? run.error || "The local runner stopped before completion." : activeParameters}
+            </p>
+            <p className="mt-2 text-[11px] text-steel">{readableFileName(run.model.name)} · {readableFileName(run.source.name)}</p>
+          </div>
+        </div>
+
+        {!failed && (
+          <div className="px-5 py-5 md:px-7">
+            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-5" aria-label="Run stage progress">
+              {stages.map((stage, index) => {
+                const position = index + 1
+                const complete = position < stageIndex || readyArtifacts.some((artifact) => artifact.id === stage.id)
+                const active = position === stageIndex && running
+                return (
+                  <div key={stage.id} aria-current={active ? "step" : undefined} className={`min-h-15 border px-3 py-2.5 ${complete ? "border-border bg-card" : active ? "border-signal bg-signal-soft" : "border-border bg-secondary/20"}`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <span className={`num text-[8px] ${active ? "text-signal" : complete ? "text-stable" : "text-muted-foreground"}`}>{String(position).padStart(2, "0")}</span>
+                      {complete ? <Check className="size-3.5 text-stable" aria-label="Completed" /> : active ? <span className="mt-1 size-1.5 bg-signal" aria-label="In progress" /> : <span className="mt-1 size-1.5 rounded-full border border-queued" aria-label="Queued" />}
+                    </div>
+                    <p className="mt-2 truncate font-mono text-[9px] uppercase tracking-[.08em]">{stage.label}</p>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="mt-5 flex items-center gap-3">
+              <span className="min-w-0 font-mono text-[9px] uppercase tracking-[.11em] text-muted-foreground">{phaseLabel}</span>
+              <div className="h-1 min-w-10 flex-1 overflow-hidden bg-secondary"><motion.div className="h-full bg-signal" animate={{ width: `${stageProgress}%` }} transition={{ duration: 0.35, ease: "easeOut" }} /></div>
+              <span className="num shrink-0 text-[10px]">{estimatedFrames != null ? `${estimatedFrames} / ${frameTotal} frames` : `${stageProgress}%`}</span>
+            </div>
           </div>
         )}
-        {availableVideos.length > 0 && (
-          <section className="mt-8 border-t border-border pt-6 text-left" aria-labelledby="ready-videos-heading">
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <p className="section-kicker text-stable">Live results</p>
-                <h2 id="ready-videos-heading" className="mt-1 text-base tracking-[-0.02em]">Ready to review</h2>
-              </div>
-              <span className="num rounded-full bg-stable/10 px-2 py-1 text-[9px] text-stable">{availableVideos.length} {availableVideos.length === 1 ? "video" : "videos"}</span>
-            </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {availableVideos.map((artifact) => (
-                <article key={artifact.id} className="overflow-hidden rounded-xl border border-border bg-secondary/45">
-                  <video controls playsInline preload="metadata" src={artifact.url} className="aspect-video w-full bg-ink" />
-                  <div className="flex items-center justify-between gap-3 px-3 py-2.5">
-                    <p className="truncate text-[11px] font-medium">{artifact.name}</p>
-                    <Check className="size-3.5 shrink-0 text-stable" aria-label="Ready" />
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
-        )}
-      </div>
+      </section>
+
+      {readyArtifacts.length > 0 && (
+        <section className="mt-4 border border-border bg-card" aria-labelledby="ready-streams-heading">
+          <div className="flex items-end justify-between gap-4 border-b border-border px-5 py-3.5"><div><p className="section-kicker text-stable">Streams</p><h2 id="ready-streams-heading" className="mt-1 text-[15px] tracking-[-0.025em]">Ready to review</h2></div><span className="num text-[9px] text-stable">{readyArtifacts.length} READY</span></div>
+          <div className="grid gap-px bg-border sm:grid-cols-2 xl:grid-cols-3">
+            {readyArtifacts.map((artifact) => (
+              <article key={artifact.id} className="bg-card">
+                <video controls playsInline preload="metadata" src={artifact.url} className="aspect-video w-full bg-ink" />
+                <div className="flex items-center justify-between gap-3 px-4 py-3"><p className="truncate text-[11px] font-medium">{artifact.name}</p><Check className="size-3.5 shrink-0 text-stable" aria-label="Ready" /></div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   )
 }
@@ -597,7 +705,7 @@ export function CVFuzzDashboard() {
           {!initialLoaded ? (
             <LoadingWorkspace />
           ) : selectedRun ? (
-            <ActiveRun key={selectedRun.id} run={selectedRun} />
+            <ActiveRun key={selectedRun.id} run={selectedRun} transforms={transforms} />
           ) : (
             <NewRunWorkspace
               model={model}
