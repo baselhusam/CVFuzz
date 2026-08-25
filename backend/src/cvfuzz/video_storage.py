@@ -19,11 +19,9 @@ class VideoRunStore:
         self.run_id = f"{timestamp}-{uuid.uuid4().hex[:8]}"
         self.path = Path(root).expanduser().resolve() / self.run_id
         self.inputs_path = self.path / "inputs"
-        self.augmented_path = self.path / "augmented"
         self.artifacts_path = self.path / "artifacts"
         self.path.mkdir(parents=True, exist_ok=False)
         self.inputs_path.mkdir()
-        self.augmented_path.mkdir()
         self.artifacts_path.mkdir()
         self.frames_path = self.path / "frames.jsonl"
         self.references_path = self.path / "baseline.jsonl"
@@ -48,7 +46,6 @@ class VideoRunStore:
         instance.path = Path(path).expanduser().resolve()
         instance.run_id = instance.path.name
         instance.inputs_path = instance.path / "inputs"
-        instance.augmented_path = instance.path / "augmented"
         instance.artifacts_path = instance.path / "artifacts"
         instance.frames_path = instance.path / "frames.jsonl"
         instance.references_path = instance.path / "baseline.jsonl"

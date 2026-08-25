@@ -3,10 +3,12 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+import sys
 import time
 from collections import Counter
 from collections.abc import Iterator
 from dataclasses import dataclass, field
+from functools import cache
 from pathlib import Path
 from typing import Any
 
@@ -135,14 +137,54 @@ class BaselineFrame:
         )
 
 
+@cache
+def _ffmpeg_encoders(ffmpeg: str) -> frozenset[str]:
+    """Read encoders once per ffmpeg executable so codec choice stays inexpensive."""
+    try:
+        result = subprocess.run(
+            [ffmpeg, "-hide_banner", "-encoders"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return frozenset()
+    return frozenset(
+        parts[1]
+        for line in result.stdout.splitlines()
+        if len(parts := line.split()) >= 2 and parts[0].startswith("V")
+    )
+
+
+def _software_encoder(encoders: frozenset[str]) -> str:
+    return "libx264" if "libx264" in encoders else "mpeg4"
+
+
+def _preferred_encoder(encoders: frozenset[str], platform_name: str | None = None) -> str:
+    """Use a native encoder only where it is a reliable local default."""
+    if (platform_name or sys.platform) == "darwin" and "h264_videotoolbox" in encoders:
+        return "h264_videotoolbox"
+    return _software_encoder(encoders)
+
+
+def _encoder_options(encoder: str) -> list[str]:
+    if encoder == "libx264":
+        return ["-preset", "veryfast", "-crf", "20"]
+    if encoder == "h264_videotoolbox":
+        return ["-realtime", "true", "-prio_speed", "true"]
+    return ["-q:v", "3"]
+
+
 class BrowserVideoWriter:
-    """Write frames once, then produce a browser-compatible H.264 MP4 when ffmpeg exists."""
+    """Write frames once, then produce a browser-compatible MP4 on every platform."""
 
     def __init__(self, output: Path, *, fps: float, size: tuple[int, int]) -> None:
         self.output = output
         self.ffmpeg = shutil.which("ffmpeg")
         self.working = output.with_suffix(".working.avi") if self.ffmpeg else output
         codec = "MJPG" if self.ffmpeg else "mp4v"
+        self.encoders = _ffmpeg_encoders(self.ffmpeg) if self.ffmpeg else frozenset()
+        self.encoder = _preferred_encoder(self.encoders) if self.ffmpeg else None
         self.writer = cv2.VideoWriter(str(self.working), cv2.VideoWriter_fourcc(*codec), fps, size)
         if not self.writer.isOpened():
             raise CVFuzzError(f"Could not create output video: {output}")
@@ -155,35 +197,38 @@ class BrowserVideoWriter:
         if not self.ffmpeg:
             return
         try:
-            subprocess.run(
-                [
-                    self.ffmpeg,
-                    "-y",
-                    "-loglevel",
-                    "error",
-                    "-i",
-                    str(self.working),
-                    "-an",
-                    "-c:v",
-                    "libx264",
-                    "-preset",
-                    "veryfast",
-                    "-crf",
-                    "20",
-                    "-pix_fmt",
-                    "yuv420p",
-                    "-movflags",
-                    "+faststart",
-                    str(self.output),
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-        except subprocess.CalledProcessError as exc:
+            candidates = [self.encoder, _software_encoder(self.encoders)]
+            errors: list[str] = []
+            for encoder in dict.fromkeys(candidates):
+                try:
+                    subprocess.run(
+                        [
+                            self.ffmpeg,
+                            "-y",
+                            "-loglevel",
+                            "error",
+                            "-i",
+                            str(self.working),
+                            "-an",
+                            "-c:v",
+                            encoder,
+                            *_encoder_options(encoder),
+                            "-pix_fmt",
+                            "yuv420p",
+                            "-movflags",
+                            "+faststart",
+                            str(self.output),
+                        ],
+                        check=True,
+                        capture_output=True,
+                        text=True,
+                    )
+                    return
+                except subprocess.CalledProcessError as exc:
+                    errors.append(f"{encoder}: {exc.stderr.strip()}")
             raise CVFuzzError(
-                f"ffmpeg could not finalize {self.output.name}: {exc.stderr}"
-            ) from exc
+                f"ffmpeg could not finalize {self.output.name}: {'; '.join(errors)}"
+            )
         finally:
             self.working.unlink(missing_ok=True)
 
@@ -266,7 +311,7 @@ def _predict(detector: Detector, image: np.ndarray) -> tuple[list[Detection], fl
 
 
 class VideoEvaluationRunner:
-    """Render augmentation videos, then evaluate each completed video stream."""
+    """Create an original baseline, then render and evaluate each augmentation in one pass."""
 
     def __init__(
         self,
@@ -292,7 +337,7 @@ class VideoEvaluationRunner:
             for item in transforms
         }
         timeline_stride = max(1, declared_frames // 80)
-        stage_total = len(transforms) + 1 + len(transforms)
+        stage_total = len(transforms) + 1
         artifact_specs = [
             ("original", "Original + inference", {}, self.store.artifacts_path / "original.mp4")
         ] + [
@@ -326,36 +371,20 @@ class VideoEvaluationRunner:
                 stage_index=0,
                 stage_total=stage_total,
             )
-            for transform_index, transform_config in enumerate(transforms):
-                self._render_augmentation(
-                    source_path,
-                    transform_config,
-                    transform_index=transform_index,
-                    capture_baseline=transform_index == 0,
-                    fps=fps,
-                    size=(width, height),
-                    declared_frames=declared_frames,
-                    stage_index=transform_index + 1,
-                    stage_total=stage_total,
-                )
-
-            if not transforms:
-                self._capture_baseline(source_path, fps=fps, declared_frames=declared_frames)
-
             frame_records, baseline_detections, baseline_confidence_sum, baseline_inference_ms = (
-                self._evaluate_original(
+                self._capture_baseline_and_render_original(
                     source_path,
                     output=self.store.artifacts_path / "original.mp4",
                     fps=fps,
                     size=(width, height),
                     declared_frames=declared_frames,
-                    stage_index=len(transforms) + 1,
+                    stage_index=1,
                     stage_total=stage_total,
                 )
             )
             for transform_index, transform_config in enumerate(transforms):
-                self._evaluate_augmentation(
-                    self.store.augmented_path / f"{transform_config.name}.mp4",
+                self._render_and_evaluate_augmentation(
+                    source_path,
                     transform_config,
                     output=self.store.artifacts_path / f"{transform_config.name}.mp4",
                     metrics=metrics[transform_config.name],
@@ -364,7 +393,7 @@ class VideoEvaluationRunner:
                     size=(width, height),
                     declared_frames=declared_frames,
                     timeline_stride=timeline_stride,
-                    stage_index=len(transforms) + 2 + transform_index,
+                    stage_index=transform_index + 2,
                     stage_total=stage_total,
                 )
             self.store.write_frames(frame_records)
@@ -494,118 +523,7 @@ class VideoEvaluationRunner:
         )
         return report
 
-    def _render_augmentation(
-        self,
-        source: Path,
-        config: TransformConfig,
-        *,
-        transform_index: int,
-        capture_baseline: bool,
-        fps: float,
-        size: tuple[int, int],
-        declared_frames: int,
-        stage_index: int,
-        stage_total: int,
-    ) -> None:
-        label = (
-            f"Creating augmentation {transform_index + 1} "
-            f"of {len(self.config.enabled_transforms)}: {_display_name(config.name)}"
-        )
-        report = self._stage_reporter(
-            phase="rendering",
-            label=label,
-            stage_index=stage_index,
-            stage_total=stage_total,
-            phase_stage_index=transform_index + 1,
-            phase_stage_total=len(self.config.enabled_transforms),
-            declared_frames=declared_frames,
-        )
-        capture = cv2.VideoCapture(str(source))
-        if not capture.isOpened():
-            raise CVFuzzError(f"Could not open video: {source}")
-        writer = BrowserVideoWriter(
-            self.store.augmented_path / f"{config.name}.mp4", fps=fps, size=size
-        )
-        references = (
-            self._baseline_frames() if config.target_aware and not capture_baseline else None
-        )
-        frames = 0
-        try:
-            while True:
-                success, image = capture.read()
-                if not success:
-                    break
-                if capture_baseline:
-                    predictions, inference_ms = _predict(self.detector, image)
-                    baselines = [
-                        item
-                        for item in predictions
-                        if item.confidence >= self.config.run.baseline_confidence
-                    ]
-                    self.store.append_baseline(
-                        {
-                            "frame": frames,
-                            "timestamp_seconds": round(frames / fps, 3),
-                            "detections": [item.to_dict() for item in baselines],
-                            "inference_ms": round(inference_ms, 4),
-                        }
-                    )
-                elif references is not None:
-                    baselines = self._next_baseline(references, frames)
-                else:
-                    baselines = []
-                transformed = _apply_transform(
-                    image,
-                    config,
-                    baselines,
-                    seed=self.config.run.seed + frames * 10_007 + transform_index * 101,
-                )
-                writer.write(transformed)
-                frames += 1
-                report(frames)
-            if frames == 0:
-                raise CVFuzzError("The uploaded video did not contain any decodable frames")
-            if references is not None:
-                self._ensure_no_remaining_baselines(references)
-            writer.finish()
-        except Exception:
-            writer.writer.release()
-            writer.working.unlink(missing_ok=True)
-            raise
-        finally:
-            capture.release()
-
-    def _capture_baseline(self, source: Path, *, fps: float, declared_frames: int) -> None:
-        capture = cv2.VideoCapture(str(source))
-        if not capture.isOpened():
-            raise CVFuzzError(f"Could not open video: {source}")
-        try:
-            frames = 0
-            while True:
-                success, image = capture.read()
-                if not success:
-                    break
-                predictions, inference_ms = _predict(self.detector, image)
-                baselines = [
-                    item
-                    for item in predictions
-                    if item.confidence >= self.config.run.baseline_confidence
-                ]
-                self.store.append_baseline(
-                    {
-                        "frame": frames,
-                        "timestamp_seconds": round(frames / fps, 3),
-                        "detections": [item.to_dict() for item in baselines],
-                        "inference_ms": round(inference_ms, 4),
-                    }
-                )
-                frames += 1
-            if frames == 0:
-                raise CVFuzzError("The uploaded video did not contain any decodable frames")
-        finally:
-            capture.release()
-
-    def _evaluate_original(
+    def _capture_baseline_and_render_original(
         self,
         source: Path,
         *,
@@ -616,21 +534,20 @@ class VideoEvaluationRunner:
         stage_index: int,
         stage_total: int,
     ) -> tuple[list[dict[str, Any]], int, float, float]:
-        label = f"Evaluating video 1 of {len(self.config.enabled_transforms) + 1}: Original"
+        label = "Capturing baseline and rendering original"
         report = self._stage_reporter(
-            phase="evaluation",
+            phase="baseline",
             label=label,
             stage_index=stage_index,
             stage_total=stage_total,
             phase_stage_index=1,
-            phase_stage_total=len(self.config.enabled_transforms) + 1,
+            phase_stage_total=stage_total,
             declared_frames=declared_frames,
         )
         capture = cv2.VideoCapture(str(source))
         if not capture.isOpened():
             raise CVFuzzError(f"Could not open video: {source}")
         writer = BrowserVideoWriter(output, fps=fps, size=size)
-        references = self._baseline_frames()
         records: list[dict[str, Any]] = []
         detections = 0
         confidence_sum = 0.0
@@ -641,11 +558,24 @@ class VideoEvaluationRunner:
                 success, image = capture.read()
                 if not success:
                     break
-                baseline = self._next_baseline(references, frames)
+                predictions, frame_inference_ms = _predict(self.detector, image)
+                baseline = [
+                    item
+                    for item in predictions
+                    if item.confidence >= self.config.run.baseline_confidence
+                ]
+                self.store.append_baseline(
+                    {
+                        "frame": frames,
+                        "timestamp_seconds": round(frames / fps, 3),
+                        "detections": [item.to_dict() for item in baseline],
+                        "inference_ms": round(frame_inference_ms, 4),
+                    }
+                )
                 writer.write(_annotate(image, baseline, stream_label="Original inference"))
                 detections += len(baseline)
                 confidence_sum += sum(item.confidence for item in baseline)
-                inference_ms += self._last_baseline_inference_ms
+                inference_ms += frame_inference_ms
                 records.append(
                     {
                         "schema_version": 1,
@@ -659,7 +589,6 @@ class VideoEvaluationRunner:
                 report(frames)
             if frames == 0:
                 raise CVFuzzError("The uploaded video did not contain any decodable frames")
-            self._ensure_no_remaining_baselines(references)
             writer.finish()
             self.store.publish_artifact(
                 {
@@ -679,7 +608,7 @@ class VideoEvaluationRunner:
             capture.release()
         return records, detections, confidence_sum, inference_ms
 
-    def _evaluate_augmentation(
+    def _render_and_evaluate_augmentation(
         self,
         source: Path,
         config: TransformConfig,
@@ -694,23 +623,23 @@ class VideoEvaluationRunner:
         stage_index: int,
         stage_total: int,
     ) -> None:
-        phase_index = list(self.config.enabled_transforms).index(config) + 2
+        phase_index = list(self.config.enabled_transforms).index(config) + 1
         label = (
-            f"Evaluating video {phase_index} of {len(self.config.enabled_transforms) + 1}: "
+            f"Processing augmentation {phase_index} of {len(self.config.enabled_transforms)}: "
             f"{_display_name(config.name)}"
         )
         report = self._stage_reporter(
-            phase="evaluation",
+            phase="processing",
             label=label,
             stage_index=stage_index,
             stage_total=stage_total,
             phase_stage_index=phase_index,
-            phase_stage_total=len(self.config.enabled_transforms) + 1,
+            phase_stage_total=len(self.config.enabled_transforms),
             declared_frames=declared_frames,
         )
         capture = cv2.VideoCapture(str(source))
         if not capture.isOpened():
-            raise CVFuzzError(f"Could not open generated augmentation: {source}")
+            raise CVFuzzError(f"Could not open video: {source}")
         writer = BrowserVideoWriter(output, fps=fps, size=size)
         references = self._baseline_frames()
         frames = 0
@@ -720,7 +649,13 @@ class VideoEvaluationRunner:
                 if not success:
                     break
                 baselines = self._next_baseline(references, frames)
-                predictions, transform_inference_ms = _predict(self.detector, image)
+                transformed = _apply_transform(
+                    image,
+                    config,
+                    baselines,
+                    seed=self.config.run.seed + frames * 10_007 + (phase_index - 1) * 101,
+                )
+                predictions, transform_inference_ms = _predict(self.detector, transformed)
                 visible_predictions = [
                     item
                     for item in predictions
@@ -732,7 +667,11 @@ class VideoEvaluationRunner:
                     if failure:
                         failures[failure.kind] += 1
                 writer.write(
-                    _annotate(image, visible_predictions, stream_label=_display_name(config.name))
+                    _annotate(
+                        transformed,
+                        visible_predictions,
+                        stream_label=_display_name(config.name),
+                    )
                 )
                 metrics.record(
                     frame_index=frames,
@@ -777,8 +716,6 @@ class VideoEvaluationRunner:
         finally:
             capture.release()
 
-    _last_baseline_inference_ms: float = 0.0
-
     def _baseline_frames(self) -> Iterator[BaselineFrame]:
         if not self.store.references_path.is_file():
             raise CVFuzzError("Baseline reference data was not created")
@@ -794,7 +731,6 @@ class VideoEvaluationRunner:
             raise CVFuzzError("Baseline reference data ended before the video") from exc
         if baseline.index != frame:
             raise CVFuzzError("Baseline reference data is out of sequence")
-        self._last_baseline_inference_ms = baseline.inference_ms
         return baseline.detections
 
     @staticmethod

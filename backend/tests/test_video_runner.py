@@ -6,7 +6,7 @@ import numpy as np
 
 from cvfuzz.config import load_config
 from cvfuzz.types import Detection
-from cvfuzz.video_runner import VideoEvaluationRunner
+from cvfuzz.video_runner import VideoEvaluationRunner, _encoder_options, _preferred_encoder
 from cvfuzz.video_storage import VideoRunStore, list_runs, read_run
 
 
@@ -79,16 +79,25 @@ transforms:
     assert run["metrics"]["transforms"][0]["id"] == "exposure"
     assert {artifact["id"] for artifact in run["artifacts"]} == {"original", "exposure"}
     assert all((run_path / artifact["path"]).is_file() for artifact in run["artifacts"])
-    assert (run_path / "augmented" / "exposure.mp4").is_file()
+    assert not (run_path / "augmented").exists()
     assert (run_path / "baseline.jsonl").is_file()
     assert len((run_path / "frames.jsonl").read_text(encoding="utf-8").splitlines()) == 3
     stages = [
         json.loads(line)["stage"]
         for line in (run_path / "events.jsonl").read_text(encoding="utf-8").splitlines()
     ]
-    assert "Creating augmentation 1 of 1: Exposure" in stages
-    assert "Evaluating video 1 of 2: Original" in stages
-    assert "Evaluating video 2 of 2: Exposure" in stages
+    assert "Capturing baseline and rendering original" in stages
+    assert "Processing augmentation 1 of 1: Exposure" in stages
     assert not any("Processed frame" in stage for stage in stages)
     assert list_runs(config.run.output_dir)[0]["id"] == store.run_id
     json.loads((run_path / "metrics.json").read_text(encoding="utf-8"))
+
+
+def test_encoder_selection_is_portable_with_macos_acceleration() -> None:
+    encoders = frozenset({"h264_videotoolbox", "libx264"})
+
+    assert _preferred_encoder(encoders, "darwin") == "h264_videotoolbox"
+    assert _preferred_encoder(encoders, "linux") == "libx264"
+    assert _preferred_encoder(frozenset(), "win32") == "mpeg4"
+    assert _encoder_options("libx264") == ["-preset", "veryfast", "-crf", "20"]
+    assert _encoder_options("h264_videotoolbox") == ["-realtime", "true", "-prio_speed", "true"]

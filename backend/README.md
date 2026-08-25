@@ -51,9 +51,10 @@ cvfuzz video-run /path/to/model.pt /path/to/video.mp4 --config cvfuzz.yaml
 cvfuzz inspect-video .cvfuzz/runs/<run-id>
 ```
 
-`run` retains the object-level boundary-search behavior. `video-run` first renders each full
-augmentation video, then evaluates the original and each completed augmentation stream. It
-creates the same artifacts used by the web application.
+`run` retains the object-level boundary-search behavior. `video-run` captures the original
+baseline once, then processes each enabled augmentation in one pass: transform, inference,
+failure comparison, annotation, and final artifact creation. It creates the same artifacts used
+by the web application without writing an intermediate video for every condition.
 
 ## Configuration model
 
@@ -104,9 +105,6 @@ motion_blur:
 ├── inputs/
 │   ├── model.pt
 │   └── source.mp4
-├── augmented/
-│   ├── exposure.mp4
-│   └── ... raw, full-length augmentation intermediates
 ├── artifacts/
 │   ├── original.mp4
 │   ├── exposure.mp4
@@ -120,9 +118,10 @@ motion_blur:
 └── artifacts.json
 ```
 
-The run first creates raw videos under `augmented/`, one at a time. It then evaluates the source
-and each generated stream, producing annotated browser-facing videos in `artifacts/`. A baseline
-reference index is persisted in `baseline.jsonl` so target-aware augmentations and later
-evaluation stages use the same original-frame detections. When `ffmpeg` is available, CVFuzz
-finalizes the videos as H.264/yuv420p with fast-start metadata for reliable browser playback.
-OpenCV's MP4 writer is used as a local fallback.
+The run captures the baseline and original annotated artifact first. It then reads the source once
+per condition and produces each transformed, evaluated, annotated browser-facing video directly
+under `artifacts/`. A baseline reference index is persisted in `baseline.jsonl` so target-aware
+augmentations use the same original-frame detections. When `ffmpeg` is available, CVFuzz uses
+macOS VideoToolbox H.264 when available, otherwise `libx264` (or `mpeg4` if `libx264` is absent),
+all with browser-compatible pixel formats and fast-start metadata. OpenCV's MP4 writer remains the
+portable fallback when FFmpeg is not installed.
