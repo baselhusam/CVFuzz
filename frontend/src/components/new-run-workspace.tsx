@@ -663,12 +663,26 @@ export function NewRunWorkspace({
       className="mx-auto max-w-[1280px] px-0 pb-16 pt-10 md:px-4 md:pt-16"
     >
       <section className="relative py-10 sm:py-12" aria-labelledby="inputs-heading">
-        <div className="pointer-events-none absolute left-1/2 top-0 size-64 -translate-x-1/2 rounded-full bg-signal/10 blur-3xl" />
         <div className="relative mx-auto max-w-3xl text-center">
-          <h1 className="text-balance text-[clamp(2.7rem,6.4vw,5.25rem)] font-normal leading-[.9] tracking-[-0.065em]">
-            Build a robustness run.
+          <h1 className="mx-auto w-full max-w-[31rem]">
+            <Image
+              src="/brand/cvfuzz-logo-light.png"
+              alt="CVFuzz"
+              width={2172}
+              height={724}
+              priority
+              className="h-auto w-full dark:hidden"
+            />
+            <Image
+              src="/brand/cvfuzz-logo-dark.png"
+              alt="CVFuzz"
+              width={2172}
+              height={724}
+              priority
+              className="hidden h-auto w-full dark:block"
+            />
           </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-pretty text-[13px] leading-6 text-steel">
+          <p className="mx-auto mt-6 max-w-2xl text-pretty text-[13px] leading-6 text-steel">
             Upload a detector and source clip, then configure the conditions that reveal where your model holds up — and where it fails.
           </p>
         </div>
