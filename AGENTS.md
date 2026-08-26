@@ -1,5 +1,11 @@
 # CVFuzz repository instructions
 
+## Operating CVFuzz
+
+For requests to use, run, serve, deploy, inspect, or troubleshoot the CVFuzz platform, read
+`skills/cvfuzz-operations/SKILL.md` before acting. It routes between the CLI, native
+web-development, and Docker Compose workflows and records the operational safety constraints.
+
 ## Project scope
 
 - The current implementation is a Python 3.11 backend and CLI under `backend/`.
