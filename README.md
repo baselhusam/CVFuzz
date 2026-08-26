@@ -232,6 +232,8 @@ storage independent to make future adapters and interfaces straightforward to ad
 - [Backend documentation](backend/README.md) — API, CLI details, full-stream behavior, and
   artifact layout.
 - [Frontend documentation](frontend/README.md) — local UI setup, configuration, and API usage.
+- [Self-hosting guide](docs/deployment.md) — Docker Compose deployment, persistent runs, and GPU
+  setup.
 - [Default YAML configuration](backend/configs/default.yaml) — all built-in transformation
   parameters and failure thresholds.
 - [Project website](https://baselhusam.github.io/CVFuzz/) — public project overview.
