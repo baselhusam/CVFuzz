@@ -4,10 +4,7 @@
 **Status:** Approved brand foundation. Product design-system decisions remain provisional until
 they are documented separately.
 
-**Professional visual edition:**
-[`CVFuzz_Brand_Guidelines.pdf`](../../../output/pdf/CVFuzz_Brand_Guidelines.pdf)
-
-**Editable publication source:**
+**Professional visual edition and editable publication source:**
 [`CVFuzz_Brand_Guidelines.html`](CVFuzz_Brand_Guidelines.html)
 
 <p align="center">

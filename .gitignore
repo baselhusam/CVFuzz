@@ -1,4 +1,5 @@
 .DS_Store
+output/
 backend/.venv/
 backend/.cvfuzz/
 backend/**/__pycache__/
