@@ -255,7 +255,6 @@ function ResultCard({
   artifact,
   metric,
   registerVideo,
-  onTimeUpdate,
   time,
   duration,
   playing,
@@ -266,7 +265,6 @@ function ResultCard({
   artifact: RunArtifact
   metric: TransformMetrics
   registerVideo: (id: string, node: HTMLVideoElement | null) => void
-  onTimeUpdate: (time: number, duration: number) => void
   time: number
   duration: number
   playing: boolean
@@ -284,7 +282,7 @@ function ResultCard({
         </div>
         <span className="max-w-36 text-right font-mono text-[8px] leading-4 text-muted-foreground">{formatParameters(metric.parameters)}</span>
       </div>
-      <VideoStage id={artifact.id} videoUrl={artifact.url} label={artifact.name} registerVideo={registerVideo} onTimeUpdate={onTimeUpdate} showFullscreenControl={false} />
+      <VideoStage id={artifact.id} videoUrl={artifact.url} label={artifact.name} registerVideo={registerVideo} showFullscreenControl={false} />
       <div className="flex items-center gap-2 border-t border-border bg-card px-3 py-2.5">
         <button type="button" onClick={onTogglePlayback} className="flex size-7 shrink-0 items-center justify-center rounded-md bg-secondary text-foreground transition-colors hover:bg-signal hover:text-ink" aria-label={playing ? "Pause all synchronized videos" : "Play all synchronized videos"}>{playing ? <Pause className="size-3 fill-current" /> : <Play className="size-3 fill-current" />}</button>
         <span className="num shrink-0 text-[8px] text-muted-foreground">{formatTime(time)}</span>
@@ -318,11 +316,17 @@ function VideoWall({ run }: { run: RunRecord }) {
   }
   const togglePlayback = async () => {
     const next = !playing
-    setPlaying(next)
-    for (const video of videos.current.values()) {
-      if (next) await video.play().catch(() => undefined)
-      else video.pause()
+    const videoElements = Array.from(videos.current.values())
+    if (!next) {
+      for (const video of videoElements) {
+        video.pause()
+        video.playbackRate = 1
+      }
+      setPlaying(false)
+      return
     }
+    await Promise.all(videoElements.map((video) => video.play().catch(() => undefined)))
+    setPlaying(videoElements.some((video) => !video.paused))
   }
   const toggleMute = () => {
     const next = !muted
@@ -340,6 +344,37 @@ function VideoWall({ run }: { run: RunRecord }) {
     setTime(nextTime)
     if (nextDuration) setDuration(nextDuration)
   }, [])
+  useEffect(() => {
+    if (!playing) return
+    const videoMap = videos.current
+    let timer: number | undefined
+    const synchronize = () => {
+      const master = videoMap.get("original")
+      if (!master || master.paused) {
+        setPlaying(false)
+        return
+      }
+      for (const [id, video] of videoMap) {
+        if (id === "original" || video.readyState < 2) continue
+        const drift = video.currentTime - master.currentTime
+        if (Math.abs(drift) > 0.45) {
+          video.currentTime = master.currentTime
+          video.playbackRate = 1
+        } else if (Math.abs(drift) > 0.06) {
+          video.playbackRate = drift > 0 ? 0.96 : 1.04
+        } else {
+          video.playbackRate = 1
+        }
+        if (video.paused) void video.play().catch(() => undefined)
+      }
+      timer = window.setTimeout(synchronize, 750)
+    }
+    synchronize()
+    return () => {
+      if (timer) window.clearTimeout(timer)
+      for (const video of videoMap.values()) video.playbackRate = 1
+    }
+  }, [playing])
   const toggleVideoFullscreen = async (id: string) => {
     const video = videos.current.get(id)
     if (!video) return
@@ -417,7 +452,7 @@ function VideoWall({ run }: { run: RunRecord }) {
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {run.metrics.transforms.map((metric) => {
             const artifact = artifactById.get(metric.id)
-            return artifact ? <ResultCard key={metric.id} artifact={artifact} metric={metric} registerVideo={registerVideo} onTimeUpdate={updateTimeline} time={time} duration={duration} playing={playing} onSeek={seek} onTogglePlayback={() => void togglePlayback()} onFullscreen={() => void toggleVideoFullscreen(metric.id)} /> : null
+            return artifact ? <ResultCard key={metric.id} artifact={artifact} metric={metric} registerVideo={registerVideo} time={time} duration={duration} playing={playing} onSeek={seek} onTogglePlayback={() => void togglePlayback()} onFullscreen={() => void toggleVideoFullscreen(metric.id)} /> : null
           })}
         </div>
       </section>

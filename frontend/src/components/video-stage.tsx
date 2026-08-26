@@ -53,7 +53,7 @@ export function VideoStage({
         muted
         loop
         playsInline
-        preload={featured ? "auto" : "metadata"}
+        preload="auto"
         aria-label={label}
         className="size-full object-contain"
         onLoadedData={() => setReady(true)}
