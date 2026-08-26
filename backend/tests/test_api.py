@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 from fastapi.testclient import TestClient
 
-from cvfuzz.api import create_app
+from cvfuzz.api import _default_config_path, create_app
 from cvfuzz.config import load_config
 from cvfuzz.types import Detection
 from cvfuzz.video_storage import VideoRunStore
@@ -20,6 +20,25 @@ class FakeDetector:
         if float(image.mean()) < 80:
             return []
         return [Detection((4, 4, 20, 20), 0, "object", 0.9)]
+
+
+def test_api_uses_packaged_default_config_when_available(tmp_path: Path, monkeypatch) -> None:
+    resource = tmp_path / "resources" / "default.yaml"
+    resource.parent.mkdir()
+    resource.write_text("version: 1\ntransforms: {}\n", encoding="utf-8")
+    monkeypatch.setattr("cvfuzz.api.files", lambda _package: tmp_path)
+
+    assert _default_config_path() == resource
+
+
+def test_api_serves_default_configuration(tmp_path: Path) -> None:
+    app = create_app(runs_root=tmp_path / "runs")
+
+    with TestClient(app) as client:
+        response = client.get("/v1/config")
+
+    assert response.status_code == 200
+    assert len(response.json()["transforms"]) == 9
 
 
 def _video_bytes(tmp_path: Path) -> bytes:

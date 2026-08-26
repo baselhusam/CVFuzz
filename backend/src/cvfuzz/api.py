@@ -6,6 +6,7 @@ import shutil
 import time
 from collections.abc import Callable
 from copy import deepcopy
+from importlib.resources import files
 from pathlib import Path
 from typing import Annotated
 
@@ -26,6 +27,9 @@ DetectorFactory = Callable[[Path, str | None], object]
 
 
 def _default_config_path() -> Path:
+    packaged = files("cvfuzz").joinpath("resources/default.yaml")
+    if packaged.is_file():
+        return Path(str(packaged))
     return Path(__file__).resolve().parents[2] / "configs" / "default.yaml"
 
 
