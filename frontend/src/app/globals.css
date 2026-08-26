@@ -35,10 +35,12 @@
   --color-steel: var(--cvf-steel);
   --font-sans: var(--font-space-grotesk);
   --font-mono: var(--font-plex-mono);
-  --radius-sm: 0.25rem;
-  --radius-md: 0.375rem;
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.625rem;
+  /* Compact, technical geometry: square data surfaces with only a slight
+     softening at interactive edges. Pills and status dots opt in explicitly. */
+  --radius-sm: 0.125rem;
+  --radius-md: 0.25rem;
+  --radius-lg: 0.375rem;
+  --radius-xl: 0.5rem;
 }
 
 :root {
