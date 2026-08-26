@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import time
 from collections.abc import Callable
 from copy import deepcopy
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import BackgroundTasks, Body, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 
@@ -180,8 +181,14 @@ def create_app(
             detector = factory(model_path, device)
             VideoEvaluationRunner(detector, config, store).run(source_path)
         except Exception as exc:
-            if store.read_manifest().get("status") != "failed":
+            if store.read_manifest().get("status") not in {"failed", "stopped"}:
                 store.fail(str(exc))
+
+    def run_path_for(run_id: str) -> Path:
+        run_path = root / safe_name(run_id)
+        if run_path.name != run_id or not (run_path / "manifest.json").is_file():
+            raise HTTPException(status_code=404, detail="Run not found")
+        return run_path
 
     @app.get("/health")
     def health() -> dict[str, object]:
@@ -301,6 +308,12 @@ def create_app(
                     "parameters"
                 ]
             store.write_yaml("config.yaml", run_config)
+            store.update(
+                status="queued",
+                progress=0,
+                stage="Files uploaded; waiting to start",
+                model={"name": model_name, "requested_device": device},
+            )
         except Exception as exc:
             store.fail(f"Could not save uploaded files: {exc}")
             raise HTTPException(status_code=500, detail="Could not save uploaded files") from exc
@@ -309,16 +322,87 @@ def create_app(
 
     @app.get("/v1/runs/{run_id}")
     def get_run(run_id: str) -> dict[str, object]:
-        run_path = root / safe_name(run_id)
-        if run_path.name != run_id or not (run_path / "manifest.json").is_file():
-            raise HTTPException(status_code=404, detail="Run not found")
-        return _artifact_urls(read_run(run_path))
+        return _artifact_urls(read_run(run_path_for(run_id)))
+
+    @app.patch("/v1/runs/{run_id}")
+    def rename_run(
+        run_id: str, payload: Annotated[dict[str, object], Body()]
+    ) -> dict[str, object]:
+        name = payload.get("name")
+        if not isinstance(name, str):
+            raise HTTPException(status_code=400, detail="Run name must be text")
+        name = name.strip()
+        if not name:
+            raise HTTPException(status_code=400, detail="Run name cannot be empty")
+        if len(name) > 120:
+            raise HTTPException(status_code=400, detail="Run name must be 120 characters or fewer")
+        store = VideoRunStore.open(run_path_for(run_id))
+        manifest = store.read_manifest()
+        store.update(
+            status=manifest["status"],
+            progress=manifest.get("progress", 0),
+            stage=manifest.get("stage", "Run updated"),
+            name=name,
+        )
+        return _artifact_urls(read_run(store.path))
+
+    @app.post("/v1/runs/{run_id}/stop")
+    def stop_run(run_id: str) -> dict[str, object]:
+        store = VideoRunStore.open(run_path_for(run_id))
+        status = store.read_manifest().get("status")
+        if status not in {"queued", "running"}:
+            raise HTTPException(
+                status_code=409, detail="Only queued or running runs can be stopped"
+            )
+        store.request_stop()
+        return _artifact_urls(read_run(store.path))
+
+    @app.post("/v1/runs/{run_id}/rerun", status_code=202)
+    def rerun_run(run_id: str, background_tasks: BackgroundTasks) -> dict[str, object]:
+        previous_path = run_path_for(run_id)
+        previous = read_run(previous_path)
+        if previous["status"] in {"queued", "running"}:
+            raise HTTPException(
+                status_code=409, detail="Stop the active run before running it again"
+            )
+        model_name = str((previous.get("model") or {}).get("name") or "model.pt")
+        source_name = str((previous.get("source") or {}).get("name") or "source.mp4")
+        model_path = previous_path / "inputs" / safe_name(model_name)
+        source_path = previous_path / "inputs" / safe_name(source_name)
+        config_path = previous_path / "config.yaml"
+        if not (model_path.is_file() and source_path.is_file() and config_path.is_file()):
+            raise HTTPException(
+                status_code=409, detail="The original run files are no longer available"
+            )
+
+        store = VideoRunStore(root, model_name=model_name, source_name=source_name)
+        next_model_path = store.inputs_path / model_path.name
+        next_source_path = store.inputs_path / source_path.name
+        shutil.copy2(model_path, next_model_path)
+        shutil.copy2(source_path, next_source_path)
+        shutil.copy2(config_path, store.path / "config.yaml")
+        device = (previous.get("model") or {}).get("requested_device")
+        store.update(
+            status="queued",
+            progress=0,
+            stage="Re-run queued; waiting to start",
+            rerun_of=run_id,
+            model={"name": model_name, "requested_device": device},
+        )
+        background_tasks.add_task(execute_run, store, next_model_path, next_source_path, device)
+        return _artifact_urls(read_run(store.path))
+
+    @app.delete("/v1/runs/{run_id}", status_code=204)
+    def delete_run(run_id: str) -> None:
+        run_path = run_path_for(run_id)
+        status = read_run(run_path).get("status")
+        if status in {"queued", "running"}:
+            raise HTTPException(status_code=409, detail="Stop the active run before deleting it")
+        shutil.rmtree(run_path)
 
     @app.get("/v1/runs/{run_id}/comparison/{transform_id}")
     def get_comparison_evidence(run_id: str, transform_id: str) -> dict[str, object]:
-        run_path = root / safe_name(run_id)
-        if run_path.name != run_id or not (run_path / "manifest.json").is_file():
-            raise HTTPException(status_code=404, detail="Run not found")
+        run_path = run_path_for(run_id)
         run = read_run(run_path)
         transforms = ((run.get("metrics") or {}).get("transforms") or [])
         if transform_id not in {item.get("id") for item in transforms}:
@@ -333,9 +417,7 @@ def create_app(
     @app.get("/v1/runs/{run_id}/events")
     def stream_run_events(run_id: str) -> StreamingResponse:
         """Send live run snapshots over one Server-Sent Events connection."""
-        run_path = root / safe_name(run_id)
-        if run_path.name != run_id or not (run_path / "manifest.json").is_file():
-            raise HTTPException(status_code=404, detail="Run not found")
+        run_path = run_path_for(run_id)
 
         def event_stream():
             previous = ""
@@ -345,7 +427,7 @@ def create_app(
                 if serialized != previous:
                     yield f"event: run\ndata: {serialized}\n\n"
                     previous = serialized
-                if payload["status"] in {"completed", "failed"}:
+                if payload["status"] in {"completed", "failed", "stopped"}:
                     break
                 time.sleep(0.25)
 

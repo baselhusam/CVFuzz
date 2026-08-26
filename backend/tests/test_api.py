@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from cvfuzz.api import create_app
 from cvfuzz.config import load_config
 from cvfuzz.types import Detection
+from cvfuzz.video_storage import VideoRunStore
 
 
 class FakeDetector:
@@ -101,9 +102,41 @@ transforms:
         assert listing[0]["id"] == run_id
         assert "transforms" not in listing[0]["metrics"]
 
+        renamed = client.patch(f"/v1/runs/{run_id}", json={"name": "Evening baseline"})
+        assert renamed.status_code == 200
+        assert renamed.json()["name"] == "Evening baseline"
+
+        rerun = client.post(f"/v1/runs/{run_id}/rerun")
+        assert rerun.status_code == 202
+        rerun_id = rerun.json()["id"]
+        assert rerun_id != run_id
+        assert rerun.json()["rerun_of"] == run_id
+        assert client.get(f"/v1/runs/{rerun_id}").json()["status"] == "completed"
+
+        deleted = client.delete(f"/v1/runs/{rerun_id}")
+        assert deleted.status_code == 204
+        assert client.get(f"/v1/runs/{rerun_id}").status_code == 404
+
         artifact = client.get(payload["artifacts"][0]["url"], headers={"Range": "bytes=0-9"})
         assert artifact.status_code == 206
         assert len(artifact.content) == 10
+
+
+def test_api_can_request_a_stop_for_active_run(tmp_path: Path) -> None:
+    runs_root = tmp_path / "runs"
+    app = create_app(
+        runs_root=runs_root,
+        config_path=Path(__file__).parents[1] / "configs" / "smoke.yaml",
+    )
+    store = VideoRunStore(runs_root, model_name="model.pt", source_name="source.mp4")
+    store.update(status="running", progress=42, stage="Processing augmentation")
+
+    with TestClient(app) as client:
+        stopped = client.post(f"/v1/runs/{store.run_id}/stop")
+        assert stopped.status_code == 200
+        assert stopped.json()["stage"] == "Stop requested; finishing the current batch"
+        assert store.stop_requested()
+        assert client.delete(f"/v1/runs/{store.run_id}").status_code == 409
 
 
 def test_api_rejects_unsupported_model(tmp_path: Path) -> None:

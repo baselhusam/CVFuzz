@@ -1,4 +1,4 @@
-export type RunStatus = "queued" | "running" | "completed" | "failed"
+export type RunStatus = "queued" | "running" | "completed" | "failed" | "stopped"
 
 export type TimelinePoint = {
   frame: number
@@ -89,6 +89,7 @@ export type ComparisonEvidence = {
 
 export type RunRecord = {
   id: string
+  name?: string
   status: RunStatus
   progress: number
   stage: string

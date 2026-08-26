@@ -33,6 +33,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(`Cannot reach the CVFuzz API at ${API_URL}. Start it with: cvfuzz serve`)
   }
   if (!response.ok) throw new Error(await responseError(response))
+  if (response.status === 204) return undefined as T
   return (await response.json()) as T
 }
 
@@ -53,6 +54,22 @@ export async function getRuns() {
 
 export async function getRun(id: string) {
   return withArtifactUrls(await request<RunRecord>(`/v1/runs/${encodeURIComponent(id)}`))
+}
+
+export async function renameRun(id: string, name: string) {
+  return withArtifactUrls(await request<RunRecord>(`/v1/runs/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  }))
+}
+
+export async function stopRun(id: string) {
+  return withArtifactUrls(await request<RunRecord>(`/v1/runs/${encodeURIComponent(id)}/stop`, { method: "POST" }))
+}
+
+export async function deleteRun(id: string) {
+  await request<void>(`/v1/runs/${encodeURIComponent(id)}`, { method: "DELETE" })
 }
 
 export async function getComparisonEvidence(runId: string, transformId: string) {
@@ -94,12 +111,46 @@ type RunSubmission = {
   onUpdate?: (run: RunRecord) => void
 }
 
+type RunFollowOptions = Pick<RunSubmission, "onProgress" | "onAccepted" | "onUpdate">
+
 function streamUrl(runId: string) {
   return `${API_URL}/v1/runs/${encodeURIComponent(runId)}/events`
 }
 
 function parseLiveRun(event: MessageEvent<string>) {
   return withArtifactUrls(JSON.parse(event.data) as RunRecord)
+}
+
+function followRun(run: RunRecord, { onProgress, onAccepted, onUpdate }: RunFollowOptions) {
+  onAccepted?.(run)
+  return new Promise<RunRecord>((resolve, reject) => {
+    const events = new EventSource(streamUrl(run.id))
+
+    events.addEventListener("run", (event) => {
+      let liveRun: RunRecord
+      try {
+        liveRun = parseLiveRun(event as MessageEvent<string>)
+      } catch {
+        events.close()
+        reject(new Error("CVFuzz sent an invalid live run update"))
+        return
+      }
+      onProgress({ progress: liveRun.progress, label: liveRun.stage })
+      onUpdate?.(liveRun)
+      if (liveRun.status === "queued" || liveRun.status === "running") return
+      events.close()
+      if (liveRun.status === "failed") {
+        reject(new Error(liveRun.error || "The CVFuzz run failed"))
+      } else {
+        onProgress({ progress: liveRun.progress, label: liveRun.stage })
+        resolve(liveRun)
+      }
+    })
+
+    events.onerror = () => {
+      onProgress({ progress: 0, label: "Reconnecting to live progress…" })
+    }
+  })
 }
 
 export async function submitRun({
@@ -127,35 +178,10 @@ export async function submitRun({
     ),
   )
   const accepted = await request<RunRecord>("/v1/runs", { method: "POST", body })
-  const run = withArtifactUrls(accepted)
-  onAccepted?.(run)
+  return await followRun(withArtifactUrls(accepted), { onProgress, onAccepted, onUpdate })
+}
 
-  return await new Promise<RunRecord>((resolve, reject) => {
-    const events = new EventSource(streamUrl(run.id))
-
-    events.addEventListener("run", (event) => {
-      let liveRun: RunRecord
-      try {
-        liveRun = parseLiveRun(event as MessageEvent<string>)
-      } catch {
-        events.close()
-        reject(new Error("CVFuzz sent an invalid live run update"))
-        return
-      }
-      onProgress({ progress: liveRun.progress, label: liveRun.stage })
-      onUpdate?.(liveRun)
-      if (liveRun.status === "queued" || liveRun.status === "running") return
-      events.close()
-      if (liveRun.status === "failed") {
-        reject(new Error(liveRun.error || "The CVFuzz run failed"))
-      } else {
-        onProgress({ progress: 100, label: "Run complete" })
-        resolve(liveRun)
-      }
-    })
-
-    events.onerror = () => {
-      onProgress({ progress: 0, label: "Reconnecting to live progress…" })
-    }
-  })
+export async function rerunRun(id: string, options: RunFollowOptions) {
+  const accepted = withArtifactUrls(await request<RunRecord>(`/v1/runs/${encodeURIComponent(id)}/rerun`, { method: "POST" }))
+  return await followRun(accepted, options)
 }

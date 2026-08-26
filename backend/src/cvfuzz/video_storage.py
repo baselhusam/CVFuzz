@@ -26,6 +26,7 @@ class VideoRunStore:
         self.frames_path = self.path / "frames.jsonl"
         self.references_path = self.path / "baseline.jsonl"
         self.events_path = self.path / "events.jsonl"
+        self.stop_request_path = self.path / "stop-requested"
         self._started_at = datetime.now(UTC)
         self.write_manifest(
             {
@@ -50,6 +51,7 @@ class VideoRunStore:
         instance.frames_path = instance.path / "frames.jsonl"
         instance.references_path = instance.path / "baseline.jsonl"
         instance.events_path = instance.path / "events.jsonl"
+        instance.stop_request_path = instance.path / "stop-requested"
         manifest = instance.read_manifest()
         instance._started_at = datetime.fromisoformat(manifest["started_at"])
         return instance
@@ -164,6 +166,29 @@ class VideoRunStore:
             stage="Run failed",
             finished_at=datetime.now(UTC).isoformat(),
             error=message,
+        )
+
+    def request_stop(self) -> None:
+        """Persist a cooperative stop request visible to the runner process."""
+        self.stop_request_path.touch(exist_ok=True)
+        manifest = self.read_manifest()
+        self.update(
+            status=manifest["status"],
+            progress=manifest.get("progress", 0),
+            stage="Stop requested; finishing the current batch",
+            stop_requested_at=datetime.now(UTC).isoformat(),
+        )
+
+    def stop_requested(self) -> bool:
+        return self.stop_request_path.is_file()
+
+    def stop(self) -> None:
+        """Mark a cooperatively stopped run as terminal without treating it as a failure."""
+        self.update(
+            status="stopped",
+            progress=self.read_manifest().get("progress", 0),
+            stage="Run stopped by user",
+            finished_at=datetime.now(UTC).isoformat(),
         )
 
     def publish_artifact(self, artifact: dict[str, Any]) -> None:

@@ -279,6 +279,23 @@
 
 .scrollbar-thin { scrollbar-width: thin; scrollbar-color: var(--accent) transparent; }
 
+.sidebar-action {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: .5rem;
+  border-radius: .25rem;
+  padding: .45rem .5rem;
+  font-family: var(--font-mono);
+  font-size: .625rem;
+  letter-spacing: .04em;
+  text-align: left;
+  transition: background-color .15s ease, color .15s ease;
+}
+
+.sidebar-action:hover:not(:disabled) { background: var(--secondary); color: var(--foreground); }
+.sidebar-action:disabled { cursor: wait; opacity: .5; }
+
 @keyframes signal-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: .28; }

@@ -16,7 +16,7 @@ import cv2
 import numpy as np
 
 from cvfuzz.config import CVFuzzConfig, TransformConfig
-from cvfuzz.exceptions import CVFuzzError
+from cvfuzz.exceptions import CVFuzzError, RunStopped
 from cvfuzz.failures import FailureDetector
 from cvfuzz.models.base import Detector
 from cvfuzz.transforms import TransformContext, get_transform
@@ -367,6 +367,7 @@ class VideoEvaluationRunner:
         ]
 
         try:
+            self._raise_if_stop_requested()
             self.store.update(
                 status="running",
                 progress=1,
@@ -422,6 +423,9 @@ class VideoEvaluationRunner:
                     stage_total=stage_total,
                 )
             self.store.write_frames(frame_records)
+        except RunStopped:
+            self.store.stop()
+            return self.store.path
         except Exception as exc:
             self.store.fail(str(exc))
             raise
@@ -478,6 +482,10 @@ class VideoEvaluationRunner:
         }
         self.store.complete(result_metrics, artifacts)
         return self.store.path
+
+    def _raise_if_stop_requested(self) -> None:
+        if self.store.stop_requested():
+            raise RunStopped("Run stopped by user")
 
     @staticmethod
     def _video_info(source: Path) -> tuple[float, int, int, int]:
@@ -540,6 +548,7 @@ class VideoEvaluationRunner:
 
         def report(frames: int) -> None:
             nonlocal last_percent
+            self._raise_if_stop_requested()
             completion = frames / declared_frames if declared_frames else 0.0
             percent = min(100, round(completion * 100))
             if percent == last_percent:
@@ -599,6 +608,7 @@ class VideoEvaluationRunner:
         frames = 0
         try:
             while True:
+                self._raise_if_stop_requested()
                 images: list[np.ndarray] = []
                 while len(images) < self.config.run.inference_batch_size:
                     success, image = capture.read()
@@ -607,6 +617,7 @@ class VideoEvaluationRunner:
                     images.append(image)
                 if not images:
                     break
+                self._raise_if_stop_requested()
                 for image, (predictions, frame_inference_ms) in zip(
                     images,
                     _predict_batch(
@@ -701,6 +712,7 @@ class VideoEvaluationRunner:
         frames = 0
         try:
             while True:
+                self._raise_if_stop_requested()
                 batch: list[tuple[int, list[Detection], np.ndarray]] = []
                 while len(batch) < self.config.run.inference_batch_size:
                     success, image = capture.read()
@@ -721,6 +733,7 @@ class VideoEvaluationRunner:
                     batch.append((frame_index, baselines, transformed))
                 if not batch:
                     break
+                self._raise_if_stop_requested()
                 predictions_by_frame = _predict_batch(
                     self.detector,
                     [item[2] for item in batch],

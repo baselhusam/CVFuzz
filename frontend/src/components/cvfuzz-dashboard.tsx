@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   Check,
   ChevronDown,
+  Ellipsis,
   Expand,
   LoaderCircle,
   Moon,
@@ -15,9 +16,13 @@ import {
   Pause,
   Play,
   Plus,
+  RotateCcw,
+  Square,
   Sun,
+  Trash2,
   Volume2,
   VolumeX,
+  Pencil,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { MetricsPanel } from "@/components/metrics-panel"
@@ -37,7 +42,7 @@ import {
   type TransformConfig,
   type TransformMetrics,
 } from "@/lib/run-data"
-import { getComparisonEvidence, getRun, getRuns, getTransformConfig, submitRun } from "@/lib/run-service"
+import { deleteRun, getComparisonEvidence, getRun, getRuns, getTransformConfig, renameRun, rerunRun, stopRun, submitRun } from "@/lib/run-service"
 
 const runDateFormatter = new Intl.DateTimeFormat(undefined, {
   month: "short",
@@ -165,6 +170,7 @@ function RunStatus({ status }: { status: RunSummary["status"] }) {
   const styles = {
     completed: "rounded-full bg-stable",
     failed: "bg-failed",
+    stopped: "rounded-full border border-muted-foreground",
     running: "rotate-45 bg-signal signal-pulse",
     queued: "rounded-full border border-queued",
   }
@@ -176,44 +182,73 @@ function RunsSidebar({
   selectedId,
   loading,
   onSelect,
+  onRename,
+  onStop,
+  onRerun,
+  onDelete,
+  actionRunId,
 }: {
   runs: RunSummary[]
   selectedId: string | null
   loading: boolean
   onSelect: (id: string) => void
+  onRename: (run: RunSummary) => void
+  onStop: (run: RunSummary) => void
+  onRerun: (run: RunSummary) => void
+  onDelete: (run: RunSummary) => void
+  actionRunId: string | null
 }) {
   const mobileDetails = useRef<HTMLDetailsElement>(null)
   const runItems = runs.map((run) => {
     const statusLabel = run.status === "completed" ? "Complete" : run.status[0].toUpperCase() + run.status.slice(1)
+    const active = run.status === "queued" || run.status === "running"
+    const actionBusy = actionRunId === run.id
     return (
-      <button
-        type="button"
-        key={run.id}
-        onClick={() => {
-          onSelect(run.id)
-          mobileDetails.current?.removeAttribute("open")
-        }}
-        className={`group w-full rounded-lg border px-3 py-2.5 text-left transition-colors duration-200 ${
-          selectedId === run.id
-            ? "border-signal/50 bg-signal-soft"
-            : "border-border/70 bg-card/70 hover:border-foreground/15 hover:bg-secondary/60"
-        }`}
-      >
-        <div className="flex items-center justify-between gap-2">
-          <span className="flex items-center gap-1.5 text-[9px] text-steel">
-            <RunStatus status={run.status} /> {statusLabel}
-          </span>
-          <span className="num text-[8px] tracking-[0.08em] text-muted-foreground">#{run.id.slice(-6)}</span>
-        </div>
-        <p className="mt-2 truncate text-[12px] font-medium tracking-[-0.015em]" title={run.model.name}>{readableFileName(run.model.name)}</p>
-        <p className="mt-0.5 truncate text-[9px] text-muted-foreground" title={run.source.name}>{readableFileName(run.source.name)}</p>
-        <div className="mt-2 flex items-center justify-between text-[9px] text-muted-foreground">
-          <span>{runDateFormatter.format(new Date(run.started_at))}</span>
-          <span className={`num ${run.status === "failed" ? "text-failed" : "text-steel"}`}>
-            {run.metrics ? `${Math.round(run.metrics.robustness_score)} / 100` : `${run.progress}%`}
-          </span>
-        </div>
-      </button>
+      <div key={run.id} className="group relative">
+        <button
+          type="button"
+          onClick={() => {
+            onSelect(run.id)
+            mobileDetails.current?.removeAttribute("open")
+          }}
+          className={`w-full rounded-lg border px-3 py-2.5 pr-10 text-left transition-colors duration-200 ${
+            selectedId === run.id
+              ? "border-signal/50 bg-signal-soft"
+              : "border-border/70 bg-card/70 hover:border-foreground/15 hover:bg-secondary/60"
+          }`}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="flex items-center gap-1.5 text-[9px] text-steel">
+              <RunStatus status={run.status} /> {statusLabel}
+            </span>
+            <span className="num text-[8px] tracking-[0.08em] text-muted-foreground">#{run.id.slice(-6)}</span>
+          </div>
+          <p className="mt-2 truncate text-[12px] font-medium tracking-[-0.015em]" title={run.name || run.model.name}>{run.name || readableFileName(run.model.name)}</p>
+          <p className="mt-0.5 truncate text-[9px] text-muted-foreground" title={run.source.name}>{readableFileName(run.source.name)}</p>
+          <div className="mt-2 flex items-center justify-between text-[9px] text-muted-foreground">
+            <span>{runDateFormatter.format(new Date(run.started_at))}</span>
+            <span className={`num ${run.status === "failed" ? "text-failed" : "text-steel"}`}>
+              {run.metrics ? `${Math.round(run.metrics.robustness_score)} / 100` : `${run.progress}%`}
+            </span>
+          </div>
+        </button>
+        <details className="absolute right-2 top-2 z-20">
+          <summary className="flex size-6 cursor-pointer list-none items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground [&::-webkit-details-marker]:hidden" aria-label={`Actions for ${run.name || readableFileName(run.model.name)}`}>
+            <Ellipsis className="size-3.5" />
+          </summary>
+          <div className="absolute right-0 top-7 w-36 overflow-hidden rounded-md border border-border bg-popover p-1 shadow-[0_14px_32px_rgba(0,0,0,.2)]">
+            <button type="button" disabled={actionBusy} onClick={() => onRename(run)} className="sidebar-action"><Pencil className="size-3" /> Rename</button>
+            {active ? (
+              <button type="button" disabled={actionBusy} onClick={() => onStop(run)} className="sidebar-action text-failed"><Square className="size-3 fill-current" /> Stop run</button>
+            ) : (
+              <>
+                <button type="button" disabled={actionBusy} onClick={() => onRerun(run)} className="sidebar-action"><RotateCcw className="size-3" /> Run again</button>
+                <button type="button" disabled={actionBusy} onClick={() => onDelete(run)} className="sidebar-action text-failed"><Trash2 className="size-3" /> Delete</button>
+              </>
+            )}
+          </div>
+        </details>
+      </div>
     )
   })
 
@@ -592,29 +627,31 @@ function ActiveRun({ run, transforms }: { run: RunRecord; transforms: TransformC
   const readyArtifacts = run.artifacts.filter((artifact) => artifact.kind === "original" || artifact.kind === "augmentation")
   const running = run.status === "running" || run.status === "queued"
   const failed = run.status === "failed"
+  const stopped = run.status === "stopped"
+  const terminal = failed || stopped
   const activeTitle = stageDisplayName(run, liveStages)
   const activeParameters = activeStage?.parameters || "Local run initialization"
 
   return (
     <div className="mx-auto max-w-6xl py-7 md:py-10">
-      <section className={`overflow-hidden border bg-card ${failed ? "border-failed/40" : "border-border"}`} aria-labelledby="live-run-heading">
+      <section className={`overflow-hidden border bg-card ${terminal ? "border-failed/40" : "border-border"}`} aria-labelledby="live-run-heading">
         <div className="border-b border-border px-5 py-7 text-center md:px-7 md:py-9">
           <div className="mx-auto max-w-2xl">
-            <p className={`section-kicker inline-flex items-center gap-2 ${failed ? "text-failed" : "text-signal"}`}>
-              {failed ? <AlertTriangle className="size-3" /> : <LoaderCircle className="size-3 animate-spin" />}
-              {failed ? "Run needs attention" : `${run.status === "queued" ? "Queued" : "Executing"} · ${stageIndex || 0} of ${stages.length} stages`}
+            <p className={`section-kicker inline-flex items-center gap-2 ${terminal ? "text-failed" : "text-signal"}`}>
+              {failed ? <AlertTriangle className="size-3" /> : stopped ? <Square className="size-3 fill-current" /> : <LoaderCircle className="size-3 animate-spin" />}
+              {failed ? "Run needs attention" : stopped ? "Stopped by user" : `${run.status === "queued" ? "Queued" : "Executing"} · ${stageIndex || 0} of ${stages.length} stages`}
             </p>
             <h1 id="live-run-heading" className="mt-3 text-balance text-[clamp(2rem,4vw,3.25rem)] tracking-[-0.05em]">
-              {failed ? "The run stopped" : activeTitle}
+              {failed ? "The run failed" : stopped ? "Run stopped" : activeTitle}
             </h1>
             <p className="mt-3 font-mono text-[10px] leading-5 text-muted-foreground">
-              {failed ? run.error || "The local runner stopped before completion." : activeParameters}
+              {terminal ? run.error || "The local runner stopped before completion." : activeParameters}
             </p>
             <p className="mt-2 text-[11px] text-steel">{readableFileName(run.model.name)} · {readableFileName(run.source.name)}</p>
           </div>
         </div>
 
-        {!failed && (
+        {!terminal && (
           <div className="px-5 py-5 md:px-7">
             <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-5" aria-label="Run stage progress">
               {stages.map((stage, index) => {
@@ -707,6 +744,7 @@ export function CVFuzzDashboard() {
   const [progressLabel, setProgressLabel] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [actionRunId, setActionRunId] = useState<string | null>(null)
 
   const selectRun = useCallback(async (id: string) => {
     setSelectedId(id)
@@ -774,6 +812,80 @@ export function CVFuzzDashboard() {
     setError(null)
   }
 
+  const applyRunUpdate = (run: RunRecord) => {
+    setRuns((current) => updateRunInList(current, run))
+    if (selectedId === run.id) setSelectedRun(run)
+  }
+
+  const handleRename = async (run: RunSummary) => {
+    const name = window.prompt("Name this test", run.name || readableFileName(run.model.name))?.trim()
+    if (!name || name === run.name) return
+    setActionRunId(run.id)
+    setError(null)
+    try {
+      applyRunUpdate(await renameRun(run.id, name))
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not rename the run")
+    } finally {
+      setActionRunId(null)
+    }
+  }
+
+  const handleStop = async (run: RunSummary) => {
+    if (!window.confirm("Stop this test after its current batch finishes?")) return
+    setActionRunId(run.id)
+    setError(null)
+    try {
+      applyRunUpdate(await stopRun(run.id))
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not stop the run")
+    } finally {
+      setActionRunId(null)
+    }
+  }
+
+  const handleRerun = async (run: RunSummary) => {
+    setActionRunId(run.id)
+    setRunning(true)
+    setError(null)
+    try {
+      const completed = await rerunRun(run.id, {
+        onProgress: (state) => { setProgress(state.progress); setProgressLabel(state.label) },
+        onAccepted: (next) => {
+          setSelectedId(next.id)
+          setSelectedRun(next)
+          setRuns((current) => updateRunInList(current, next))
+        },
+        onUpdate: (next) => {
+          setSelectedRun(next)
+          setRuns((current) => updateRunInList(current, next))
+        },
+      })
+      setSelectedRun(completed)
+      setRuns((current) => updateRunInList(current, completed))
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "The run could not be started again")
+    } finally {
+      setActionRunId(null)
+      setRunning(false)
+    }
+  }
+
+  const handleDelete = async (run: RunSummary) => {
+    if (!window.confirm(`Delete “${run.name || readableFileName(run.model.name)}” and all of its local artifacts?`)) return
+    setActionRunId(run.id)
+    setError(null)
+    try {
+      await deleteRun(run.id)
+      setRuns((current) => current.filter((item) => item.id !== run.id))
+      if (selectedId === run.id) newRun()
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not delete the run")
+    } finally {
+      setActionRunId(null)
+    }
+  }
+
   const handleRun = async () => {
     if (!model || !video) return
     setRunning(true)
@@ -818,7 +930,17 @@ export function CVFuzzDashboard() {
       />
       <div className={`grid min-w-0 grid-cols-[minmax(0,1fr)] transition-[grid-template-columns] duration-300 ease-out ${sidebarCollapsed ? "lg:grid-cols-[0_minmax(0,1fr)]" : "lg:grid-cols-[232px_minmax(0,1fr)]"}`}>
         <div className={`min-w-0 transition-opacity duration-200 ${sidebarCollapsed ? "lg:invisible lg:opacity-0" : "lg:visible lg:opacity-100"}`}>
-          <RunsSidebar runs={runs} selectedId={selectedId} loading={loadingRuns} onSelect={(id) => void selectRun(id)} />
+          <RunsSidebar
+            runs={runs}
+            selectedId={selectedId}
+            loading={loadingRuns}
+            onSelect={(id) => void selectRun(id)}
+            onRename={(run) => void handleRename(run)}
+            onStop={(run) => void handleStop(run)}
+            onRerun={(run) => void handleRerun(run)}
+            onDelete={(run) => void handleDelete(run)}
+            actionRunId={actionRunId}
+          />
         </div>
         <main id="main-content" tabIndex={-1} className="min-w-0 px-3 sm:px-5 xl:px-7">
           {!initialLoaded ? (

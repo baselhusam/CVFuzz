@@ -33,6 +33,20 @@ class BatchBrightnessDetector(BrightnessDetector):
         return [self.predict(image) for image in images]
 
 
+class StopAfterFirstBatchDetector(BatchBrightnessDetector):
+    def __init__(self, store: VideoRunStore) -> None:
+        super().__init__()
+        self.store = store
+
+    def predict_batch(
+        self, images: list[np.ndarray], *, image_size: tuple[int, int]
+    ) -> list[list[Detection]]:
+        predictions = super().predict_batch(images, image_size=image_size)
+        if len(self.batch_calls) == 1:
+            self.store.request_stop()
+        return predictions
+
+
 def _write_video(path: Path) -> None:
     writer = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*"mp4v"), 5, (32, 32))
     assert writer.isOpened()
@@ -123,3 +137,18 @@ def test_encoder_selection_is_portable_with_macos_acceleration() -> None:
     assert _preferred_encoder(frozenset(), "win32") == "mpeg4"
     assert _encoder_options("libx264") == ["-preset", "veryfast", "-crf", "20"]
     assert _encoder_options("h264_videotoolbox") == ["-realtime", "true", "-prio_speed", "true"]
+
+
+def test_runner_marks_a_run_stopped_after_the_current_batch(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr("cvfuzz.video_runner.shutil.which", lambda _name: None)
+    source = tmp_path / "source.mp4"
+    _write_video(source)
+    config = load_config(Path(__file__).parents[1] / "configs" / "smoke.yaml")
+    store = VideoRunStore(tmp_path / "runs", model_name="fake.pt", source_name=source.name)
+
+    run_path = VideoEvaluationRunner(StopAfterFirstBatchDetector(store), config, store).run(source)
+
+    run = read_run(run_path)
+    assert run["status"] == "stopped"
+    assert run["stage"] == "Run stopped by user"
+    assert run["metrics"] is None
