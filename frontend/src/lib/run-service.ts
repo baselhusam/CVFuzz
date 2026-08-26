@@ -1,5 +1,6 @@
 import type {
   InferenceDevice,
+  ComparisonEvidence,
   RunRecord,
   RunSummary,
   TransformConfig,
@@ -52,6 +53,10 @@ export async function getRuns() {
 
 export async function getRun(id: string) {
   return withArtifactUrls(await request<RunRecord>(`/v1/runs/${encodeURIComponent(id)}`))
+}
+
+export async function getComparisonEvidence(runId: string, transformId: string) {
+  return await request<ComparisonEvidence>(`/v1/runs/${encodeURIComponent(runId)}/comparison/${encodeURIComponent(transformId)}`)
 }
 
 export async function getTransformConfig() {

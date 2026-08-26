@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { motion } from "framer-motion"
 import {
   AlertTriangle,
@@ -29,13 +29,15 @@ import {
   formatParameters,
   formatTime,
   type InferenceDevice,
+  type ComparisonEvidence,
+  type ComparisonFailureEvent,
   type RunArtifact,
   type RunRecord,
   type RunSummary,
   type TransformConfig,
   type TransformMetrics,
 } from "@/lib/run-data"
-import { getRun, getRuns, getTransformConfig, submitRun } from "@/lib/run-service"
+import { getComparisonEvidence, getRun, getRuns, getTransformConfig, submitRun } from "@/lib/run-service"
 
 const runDateFormatter = new Intl.DateTimeFormat(undefined, {
   month: "short",
@@ -261,6 +263,8 @@ function ResultCard({
   onSeek,
   onTogglePlayback,
   onFullscreen,
+  selected,
+  onSelect,
 }: {
   artifact: RunArtifact
   metric: TransformMetrics
@@ -271,16 +275,18 @@ function ResultCard({
   onSeek: (time: number) => void
   onTogglePlayback: () => void
   onFullscreen: () => void
+  selected: boolean
+  onSelect: () => void
 }) {
   const state = metric.failures > 0 ? "Changes detected" : "No changes detected"
   return (
-    <article className={`group overflow-hidden rounded-xl border bg-card shadow-[0_8px_30px_rgba(0,0,0,.06)] transition-colors hover:border-foreground/25 ${metric.failures ? "border-border" : "border-stable/30"}`}>
+    <article className={`group overflow-hidden rounded-xl border bg-card shadow-[0_8px_30px_rgba(0,0,0,.06)] transition-colors hover:border-foreground/25 ${selected ? "border-signal ring-1 ring-signal/20" : metric.failures ? "border-border" : "border-stable/30"}`}>
       <div className="flex items-start justify-between gap-4 border-b border-border bg-secondary/20 px-4 py-3.5">
         <div className="min-w-0">
           <p className={`flex items-center gap-1.5 font-mono text-[8px] uppercase tracking-[0.12em] ${metric.failures ? "text-failed" : "text-stable"}`}><span className={`size-1.5 rounded-full ${metric.failures ? "bg-failed" : "bg-stable"}`} />{state}</p>
           <h3 className="mt-1.5 truncate text-[13px] font-medium">{metric.name}</h3>
         </div>
-        <span className="max-w-36 text-right font-mono text-[8px] leading-4 text-muted-foreground">{formatParameters(metric.parameters)}</span>
+        <div className="flex shrink-0 flex-col items-end gap-2"><button type="button" onClick={onSelect} className={`border px-2 py-1 font-mono text-[7px] uppercase tracking-[.08em] transition-colors ${selected ? "border-signal bg-signal text-ink" : "border-input text-muted-foreground hover:border-signal hover:text-foreground"}`}>{selected ? "Inspecting" : "Compare"}</button><span className="max-w-36 text-right font-mono text-[8px] leading-4 text-muted-foreground">{formatParameters(metric.parameters)}</span></div>
       </div>
       <VideoStage id={artifact.id} videoUrl={artifact.url} label={artifact.name} registerVideo={registerVideo} showFullscreenControl={false} />
       <div className="flex items-center gap-2 border-t border-border bg-card px-3 py-2.5">
@@ -299,16 +305,78 @@ function ResultCard({
   )
 }
 
-function VideoWall({ run }: { run: RunRecord }) {
+function ReadyArtifactPreview({ artifact }: { artifact: RunArtifact }) {
+  const [state, setState] = useState<"loading" | "ready" | "failed">("loading")
+  return (
+    <div className="relative aspect-video overflow-hidden bg-[#080d12] shadow-[inset_0_1px_0_rgba(255,255,255,.025)]">
+      {state !== "ready" && <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[#080d12] font-mono text-[8px] uppercase tracking-[.1em] text-muted-foreground"><span className={`size-1.5 ${state === "failed" ? "bg-failed" : "animate-pulse bg-signal"}`} /><span>{state === "failed" ? "Preview unavailable" : "Preparing stream preview"}</span></div>}
+      <video controls={state === "ready"} playsInline preload="metadata" src={artifact.url} onLoadedData={() => setState("ready")} onError={() => setState("failed")} className={`absolute inset-0 size-full bg-[#080d12] object-contain transition-opacity duration-200 ${state === "ready" ? "opacity-100" : "opacity-0"}`} />
+    </div>
+  )
+}
+
+function boxOverlap([leftA, topA, rightA, bottomA]: ComparisonFailureEvent["baseline"]["box"], [leftB, topB, rightB, bottomB]: ComparisonFailureEvent["baseline"]["box"]) {
+  const overlapWidth = Math.max(0, Math.min(rightA, rightB) - Math.max(leftA, leftB))
+  const overlapHeight = Math.max(0, Math.min(bottomA, bottomB) - Math.max(topA, topB))
+  const intersection = overlapWidth * overlapHeight
+  const union = (rightA - leftA) * (bottomA - topA) + (rightB - leftB) * (bottomB - topB) - intersection
+  return union ? intersection / union : 0
+}
+
+function uniqueComparisonEvents(events: ComparisonFailureEvent[]) {
+  const priority = (event: ComparisonFailureEvent) => (event.kind === "missed" ? 2 : 1) * 10 + event.baseline.confidence
+  return [...events]
+    .sort((left, right) => priority(right) - priority(left))
+    .reduce<ComparisonFailureEvent[]>((unique, event) => {
+      const representsExistingObject = unique.some((existing) => boxOverlap(existing.baseline.box, event.baseline.box) >= 0.5)
+      return representsExistingObject ? unique : [...unique, event]
+    }, [])
+}
+
+function FailureOverlay({ events, width, height }: { events: ComparisonFailureEvent[]; width: number; height: number }) {
+  if (!events.length || !width || !height) return null
+  return <div className="pointer-events-none absolute inset-0 z-10">{events.map((event, index) => {
+    const [left, top, right, bottom] = event.baseline.box
+    const missed = event.kind === "missed"
+    return <div key={`${event.kind}-${index}-${left}-${top}`} className={`absolute border-2 ${missed ? "border-failed" : "border-signal"} shadow-[0_0_18px_rgba(255,82,102,.35)]`} style={{ left: `${(left / width) * 100}%`, top: `${(top / height) * 100}%`, width: `${Math.max(1, ((right - left) / width) * 100)}%`, height: `${Math.max(1, ((bottom - top) / height) * 100)}%` }}><span className={`absolute left-0 top-0 -translate-y-full whitespace-nowrap px-1.5 py-0.5 font-mono text-[7px] uppercase tracking-[.08em] text-white ${missed ? "bg-failed" : "bg-signal text-ink"}`}>{missed ? `Missed · ${event.baseline.class_name}` : `${event.baseline.class_name} → ${event.transformed?.class_name || "unknown"}`}</span></div>
+  })}</div>
+}
+
+function VideoWall({ run, selectedTransformId, comparisonActive, onCompare, onExitComparison }: { run: RunRecord; selectedTransformId: string | null; comparisonActive: boolean; onCompare: (transformId: string) => void; onExitComparison: () => void }) {
   const videos = useRef(new Map<string, HTMLVideoElement>())
   const [playing, setPlaying] = useState(false)
   const [muted, setMuted] = useState(true)
+  const [playbackRate, setPlaybackRate] = useState<1 | 2>(1)
   const [time, setTime] = useState(0)
   const [duration, setDuration] = useState(run.metrics?.video_duration_seconds || 0)
+  const [showDifferences, setShowDifferences] = useState(false)
+  const [evidence, setEvidence] = useState<ComparisonEvidence | null>(null)
   const lastTimelineUpdate = useRef(0)
   const original = run.artifacts.find((item) => item.kind === "original")
   const artifactById = new Map(run.artifacts.map((item) => [item.id, item]))
   const weakest = run.metrics?.transforms.find((item) => item.id === run.metrics?.weakest_transform)
+  const selectedMetric = run.metrics?.transforms.find((item) => item.id === selectedTransformId) || run.metrics?.transforms[0]
+
+  useEffect(() => {
+    if (!comparisonActive || !selectedMetric) return
+    let cancelled = false
+    void getComparisonEvidence(run.id, selectedMetric.id).then((next) => {
+      if (!cancelled) setEvidence(next)
+    }).catch(() => {
+      if (!cancelled) setEvidence(null)
+    })
+    return () => { cancelled = true }
+  }, [comparisonActive, run.id, selectedMetric])
+  const comparisonEvents = useMemo(() => {
+    if (!evidence || evidence.transform_id !== selectedMetric?.id || !run.metrics) return []
+    const currentFrame = Math.round(time * run.metrics.fps)
+    const nearestFrame = evidence.frames.reduce<(typeof evidence.frames)[number] | null>((closest, frame) => {
+      if (!closest || Math.abs(frame.frame - currentFrame) < Math.abs(closest.frame - currentFrame)) return frame
+      return closest
+    }, null)
+    return nearestFrame && Math.abs(nearestFrame.frame - currentFrame) <= 1 ? nearestFrame.events : []
+  }, [evidence, run.metrics, selectedMetric?.id, time])
+  const visibleComparisonEvents = useMemo(() => uniqueComparisonEvents(comparisonEvents), [comparisonEvents])
 
   const registerVideo = (id: string, node: HTMLVideoElement | null) => {
     if (node) videos.current.set(id, node)
@@ -320,13 +388,18 @@ function VideoWall({ run }: { run: RunRecord }) {
     if (!next) {
       for (const video of videoElements) {
         video.pause()
-        video.playbackRate = 1
       }
       setPlaying(false)
       return
     }
+    for (const video of videoElements) video.playbackRate = playbackRate
     await Promise.all(videoElements.map((video) => video.play().catch(() => undefined)))
     setPlaying(videoElements.some((video) => !video.paused))
+  }
+  const togglePlaybackRate = () => {
+    const next = playbackRate === 1 ? 2 : 1
+    setPlaybackRate(next)
+    for (const video of videos.current.values()) video.playbackRate = next
   }
   const toggleMute = () => {
     const next = !muted
@@ -345,6 +418,7 @@ function VideoWall({ run }: { run: RunRecord }) {
     if (nextDuration) setDuration(nextDuration)
   }, [])
   useEffect(() => {
+    for (const video of videos.current.values()) video.playbackRate = playbackRate
     if (!playing) return
     const videoMap = videos.current
     let timer: number | undefined
@@ -359,11 +433,11 @@ function VideoWall({ run }: { run: RunRecord }) {
         const drift = video.currentTime - master.currentTime
         if (Math.abs(drift) > 0.45) {
           video.currentTime = master.currentTime
-          video.playbackRate = 1
+          video.playbackRate = playbackRate
         } else if (Math.abs(drift) > 0.06) {
-          video.playbackRate = drift > 0 ? 0.96 : 1.04
+          video.playbackRate = playbackRate * (drift > 0 ? 0.96 : 1.04)
         } else {
-          video.playbackRate = 1
+          video.playbackRate = playbackRate
         }
         if (video.paused) void video.play().catch(() => undefined)
       }
@@ -372,9 +446,8 @@ function VideoWall({ run }: { run: RunRecord }) {
     synchronize()
     return () => {
       if (timer) window.clearTimeout(timer)
-      for (const video of videoMap.values()) video.playbackRate = 1
     }
-  }, [playing])
+  }, [playing, playbackRate])
   const toggleVideoFullscreen = async (id: string) => {
     const video = videos.current.get(id)
     if (!video) return
@@ -388,6 +461,9 @@ function VideoWall({ run }: { run: RunRecord }) {
   const toggleOriginalFullscreen = () => toggleVideoFullscreen("original")
 
   if (!original || !run.metrics) return null
+  const selectedArtifact = selectedMetric ? artifactById.get(selectedMetric.id) : undefined
+  const selectedVideoId = selectedArtifact ? `comparison-${selectedArtifact.id}` : null
+  const selectedTone = selectedMetric ? (selectedMetric.retention < 50 ? "text-failed" : selectedMetric.retention < 85 ? "text-signal" : "text-stable") : "text-muted-foreground"
   const finding = weakest
     ? `The model kept ${weakest.retention}% of its original detections. Changes began at ${formatTime(weakest.first_failure_seconds)} and affected ${weakest.affected_frames} of ${run.metrics.frames_analyzed} frames.`
     : "The model stayed consistent across all tested video conditions."
@@ -424,35 +500,32 @@ function VideoWall({ run }: { run: RunRecord }) {
           <div className="border-l border-t border-border bg-card p-4 text-center sm:border-t-0"><span className="metric-label">Test length</span><p className="num mt-2 text-2xl">{formatTime(run.metrics.video_duration_seconds)}</p><p className="mt-1 text-[10px] text-muted-foreground">Source video</p></div>
         </div>
 
-        <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-          <div><p className="section-kicker">Video comparison</p><h2 className="mt-2 text-xl tracking-[-0.03em]">Compare the videos</h2><p className="mt-1 text-[11px] text-muted-foreground">The shared controls synchronize the source and every condition video.</p></div>
-          <span className="text-[10px] text-muted-foreground">{run.metrics.frames_analyzed} frames · one shared timeline</span>
+        <div id="comparison-workspace" className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+          <div><p className="section-kicker">Video review</p><h2 className="mt-2 text-xl tracking-[-0.03em]">{comparisonActive ? "Baseline vs. selected condition" : "Review the baseline"}</h2><p className="mt-1 text-[11px] text-muted-foreground">{comparisonActive ? "Inspect a selected condition against the raw baseline on one shared timeline." : "Open Compare mode only when you need a focused side-by-side investigation."}</p></div>
+          <div className="flex items-center gap-3"><span className="text-[10px] text-muted-foreground">{run.metrics.frames_analyzed} frames · one shared timeline</span><button type="button" onClick={() => { const transformId = selectedMetric?.id || run.metrics!.transforms[0]?.id; if (comparisonActive) onExitComparison(); else if (transformId) onCompare(transformId) }} className={`border px-3 py-2 font-mono text-[8px] uppercase tracking-[.09em] transition-colors ${comparisonActive ? "border-input text-muted-foreground hover:border-foreground/40 hover:text-foreground" : "border-signal bg-signal text-ink"}`}>{comparisonActive ? "Exit compare" : "Compare a condition"}</button></div>
         </div>
-        <div className="overflow-hidden rounded-lg border border-border bg-card">
-          <div className="flex items-center justify-between border-b border-border px-4 py-3"><h3 className="text-[13px]">Original video</h3><span className="max-w-56 truncate text-[10px] text-muted-foreground">{run.source.name}</span></div>
-          <VideoStage
-            id="original"
-            videoUrl={original.url}
-            label="Original video"
-            featured
-            registerVideo={registerVideo}
-            onTimeUpdate={updateTimeline}
-          />
-        </div>
+        {comparisonActive ? <div className="mb-3 overflow-hidden rounded-lg border border-signal/60 bg-card shadow-[0_0_0_1px_rgba(215,250,3,.08)]">
+          <div className="flex flex-col gap-3 border-b border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between"><div><span className="metric-label">Compare mode</span><p className="mt-1 text-[11px] text-muted-foreground">Select a stream, then reveal baseline mismatches only when you need them.</p></div><div className="-mx-1 flex max-w-full items-center gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]">{run.metrics.transforms.map((metric) => <button key={metric.id} type="button" onClick={() => onCompare(metric.id)} aria-pressed={selectedMetric?.id === metric.id} className={`shrink-0 border px-2.5 py-1.5 font-mono text-[8px] uppercase tracking-[.07em] transition-colors ${selectedMetric?.id === metric.id ? "border-signal bg-signal text-ink" : "border-input text-muted-foreground hover:border-signal hover:text-foreground"}`}>{metric.name}</button>)}</div></div>
+          <div className="grid lg:grid-cols-2 lg:divide-x lg:divide-border"><div><div className="flex items-center justify-between border-b border-border px-4 py-3"><div><span className="metric-label">Baseline</span><h3 className="mt-1 text-[13px]">Original video</h3></div><span className="max-w-56 truncate text-[10px] text-muted-foreground">Clean reference</span></div><VideoStage id="original" videoUrl={original.url} label="Original video" featured registerVideo={registerVideo} onTimeUpdate={updateTimeline} /></div>{selectedArtifact && selectedMetric && <div><div className="flex items-center justify-between border-b border-border px-4 py-3"><div><span className="metric-label">Selected stream</span><h3 className="mt-1 text-[13px]">{selectedMetric.name}</h3></div><div className="flex items-center gap-2"><button type="button" onClick={() => setShowDifferences((current) => !current)} aria-pressed={showDifferences} className={`border px-2.5 py-1.5 font-mono text-[8px] uppercase tracking-[.08em] transition-colors ${showDifferences ? "border-failed bg-failed text-white" : "border-input text-muted-foreground hover:border-failed hover:text-foreground"}`}>{showDifferences ? "Hide differences" : "Show differences"}</button><span className="max-w-40 text-right font-mono text-[8px] leading-4 text-muted-foreground">{formatParameters(selectedMetric.parameters)}</span></div></div><VideoStage id={selectedVideoId!} videoUrl={selectedArtifact.url} label={`${selectedMetric.name} comparison video`} featured registerVideo={registerVideo} overlay={showDifferences ? <FailureOverlay events={visibleComparisonEvents} width={run.metrics.resolution.width} height={run.metrics.resolution.height} /> : undefined} /></div>}</div>
+          {showDifferences && <div className="border-t border-border bg-secondary/20 px-4 py-2.5 font-mono text-[8px] text-muted-foreground">{visibleComparisonEvents.length ? <span><b className="font-medium text-failed">{visibleComparisonEvents.filter((event) => event.kind === "missed").length} missed baseline detections</b> · <b className="font-medium text-signal">{visibleComparisonEvents.filter((event) => event.kind === "class_flip").length} wrong classifications</b> near {formatTime(time)}</span> : <span>No missed-detection or classification-change event is recorded near this moment. Older runs must be re-run to include frame-level comparison evidence.</span>}</div>}
+        </div> : <div className="mb-3 overflow-hidden rounded-lg border border-border bg-card"><div className="flex items-center justify-between border-b border-border px-4 py-3"><div><span className="metric-label">Baseline</span><h3 className="mt-1 text-[13px]">Original video</h3></div><span className="max-w-56 truncate text-[10px] text-muted-foreground">{run.source.name}</span></div><VideoStage id="original" videoUrl={original.url} label="Original video" featured registerVideo={registerVideo} onTimeUpdate={updateTimeline} /></div>}
         <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
           <span className="hidden font-mono text-[8px] uppercase tracking-[.12em] text-muted-foreground sm:block">Shared playback</span>
           <button type="button" onClick={togglePlayback} className="flex size-8 items-center justify-center rounded-md bg-signal text-ink" aria-label={playing ? "Pause all videos" : "Play all videos"}>{playing ? <Pause className="size-3.5 fill-current" /> : <Play className="size-3.5 fill-current" />}</button>
           <span className="num w-11 text-[8.5px] text-muted-foreground">{formatTime(time)}</span>
           <input className="timeline-range h-1 flex-1" type="range" min="0" max={Math.max(duration, 1)} step="0.1" value={Math.min(time, duration)} onChange={(event) => seek(Number(event.target.value))} aria-label="Synchronized video timeline" />
           <span className="num w-11 text-[8.5px] text-muted-foreground">{formatTime(duration)}</span>
-          <button type="button" onClick={() => void toggleOriginalFullscreen()} className="flex h-8 items-center justify-center gap-1.5 rounded-md px-2 text-muted-foreground hover:bg-secondary hover:text-foreground" aria-label="View original video fullscreen"><Expand className="size-3.5" /><span className="hidden font-mono text-[8px] uppercase tracking-[.09em] md:inline">Full screen</span></button>
+          <button type="button" onClick={togglePlaybackRate} aria-pressed={playbackRate === 2} aria-label={playbackRate === 2 ? "Play all videos at normal speed" : "Play all videos at double speed"} className={`flex h-8 items-center justify-center rounded-md border px-2 font-mono text-[8px] uppercase tracking-[.08em] transition-colors ${playbackRate === 2 ? "border-signal bg-signal text-ink" : "border-transparent text-muted-foreground hover:border-input hover:bg-secondary hover:text-foreground"}`}>{playbackRate}×</button>
+          <button type="button" onClick={() => void toggleOriginalFullscreen()} className="flex h-8 items-center justify-center gap-1.5 rounded-md px-2 text-muted-foreground hover:bg-secondary hover:text-foreground" aria-label="View original video fullscreen"><Expand className="size-3.5" /><span className="hidden font-mono text-[8px] uppercase tracking-[.09em] md:inline">Baseline</span></button>
+          {selectedVideoId && <button type="button" onClick={() => void toggleVideoFullscreen(selectedVideoId)} className="flex h-8 items-center justify-center gap-1.5 rounded-md px-2 text-muted-foreground hover:bg-secondary hover:text-foreground" aria-label={`View ${selectedMetric?.name || "selected"} video fullscreen`}><Expand className="size-3.5" /><span className="hidden font-mono text-[8px] uppercase tracking-[.09em] md:inline">Selected</span></button>}
           <button type="button" onClick={toggleMute} className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground" aria-label={muted ? "Unmute original" : "Mute original"}>{muted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}</button>
         </div>
-        <div className="mb-4 mt-8"><p className="section-kicker">Condition results</p><h2 className="mt-2 text-xl tracking-[-0.03em]">Results by condition</h2><p className="mt-1 text-[11px] text-muted-foreground">Every card follows the shared playback controls above.</p></div>
+        {comparisonActive && selectedMetric && <div className="mb-4 grid overflow-hidden rounded-lg border border-border bg-card sm:grid-cols-[1.35fr_repeat(3,1fr)] sm:divide-x sm:divide-border"><div className="border-b border-border p-4 sm:border-b-0"><span className="metric-label">Selected condition</span><p className="mt-1.5 text-[14px] font-medium">{selectedMetric.name}</p><p className="mt-1 font-mono text-[8.5px] text-muted-foreground">{formatParameters(selectedMetric.parameters)}</p></div><div className="border-b border-border p-4 sm:border-b-0"><span className="metric-label">Retention</span><p className={`num mt-1.5 text-lg ${selectedTone}`}>{selectedMetric.retention}%</p></div><div className="border-b border-border p-4 sm:border-b-0"><span className="metric-label">Confidence change</span><p className={`num mt-1.5 text-lg ${selectedMetric.confidence_delta < 0 ? "text-failed" : "text-stable"}`}>{selectedMetric.confidence_delta > 0 ? "+" : ""}{selectedMetric.confidence_delta}%</p></div><div className="p-4"><span className="metric-label">Failure events</span><p className="num mt-1.5 text-lg">{selectedMetric.failures}</p></div></div>}
+        <div className="mb-4 mt-8"><p className="section-kicker">Condition results</p><h2 className="mt-2 text-xl tracking-[-0.03em]">All condition streams</h2><p className="mt-1 text-[11px] text-muted-foreground">Use Compare on any card to bring it into the A/B inspection workspace above.</p></div>
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {run.metrics.transforms.map((metric) => {
             const artifact = artifactById.get(metric.id)
-            return artifact ? <ResultCard key={metric.id} artifact={artifact} metric={metric} registerVideo={registerVideo} time={time} duration={duration} playing={playing} onSeek={seek} onTogglePlayback={() => void togglePlayback()} onFullscreen={() => void toggleVideoFullscreen(metric.id)} /> : null
+            return artifact ? <ResultCard key={metric.id} artifact={artifact} metric={metric} registerVideo={registerVideo} time={time} duration={duration} playing={playing} onSeek={seek} onTogglePlayback={() => void togglePlayback()} onFullscreen={() => void toggleVideoFullscreen(metric.id)} selected={comparisonActive && selectedMetric?.id === metric.id} onSelect={() => onCompare(metric.id)} /> : null
           })}
         </div>
       </section>
@@ -473,9 +546,20 @@ function stageDisplayName(run: RunRecord, stages: LiveStage[]) {
   return stages[index]?.label || run.stage
 }
 
+function CompletedRun({ run }: { run: RunRecord }) {
+  const [comparisonActive, setComparisonActive] = useState(false)
+  const [selectedTransformId, setSelectedTransformId] = useState<string | null>(() => run.metrics?.weakest_transform || run.metrics?.transforms[0]?.id || null)
+  const openComparison = useCallback((transformId: string) => {
+    setSelectedTransformId(transformId)
+    setComparisonActive(true)
+    window.requestAnimationFrame(() => document.getElementById("comparison-workspace")?.scrollIntoView({ behavior: "smooth", block: "start" }))
+  }, [])
+  return <><VideoWall run={run} selectedTransformId={selectedTransformId} comparisonActive={comparisonActive} onCompare={openComparison} onExitComparison={() => setComparisonActive(false)} /><MetricsPanel metrics={run.metrics!} onCompare={openComparison} /></>
+}
+
 function ActiveRun({ run, transforms }: { run: RunRecord; transforms: TransformConfig[] }) {
   if (run.status === "completed" && run.metrics) {
-    return <><VideoWall run={run} /><MetricsPanel metrics={run.metrics} /></>
+    return <CompletedRun key={run.id} run={run} />
   }
   const configuredStages: LiveStage[] = transforms
     .filter((transform) => transform.enabled)
@@ -564,7 +648,7 @@ function ActiveRun({ run, transforms }: { run: RunRecord; transforms: TransformC
           <div className="grid gap-px bg-border sm:grid-cols-2 xl:grid-cols-3">
             {readyArtifacts.map((artifact) => (
               <article key={artifact.id} className="bg-card">
-                <video controls playsInline preload="metadata" src={artifact.url} className="aspect-video w-full bg-ink" />
+                <ReadyArtifactPreview artifact={artifact} />
                 <div className="flex items-center justify-between gap-3 px-4 py-3"><p className="truncate text-[11px] font-medium">{artifact.name}</p><Check className="size-3.5 shrink-0 text-stable" aria-label="Ready" /></div>
               </article>
             ))}

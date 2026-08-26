@@ -58,6 +58,35 @@ export type RunArtifact = {
   url: string
 }
 
+export type ComparisonFailureEvent = {
+  kind: "missed" | "class_flip"
+  message: string
+  baseline: {
+    box: [number, number, number, number]
+    class_id: number
+    class_name: string
+    confidence: number
+  }
+  transformed: {
+    box: [number, number, number, number]
+    class_id: number
+    class_name: string
+    confidence: number
+  } | null
+  metrics: Record<string, number>
+}
+
+export type ComparisonEvidence = {
+  schema_version: number
+  run_id: string
+  transform_id: string
+  frames: Array<{
+    frame: number
+    timestamp_seconds: number
+    events: ComparisonFailureEvent[]
+  }>
+}
+
 export type RunRecord = {
   id: string
   status: RunStatus

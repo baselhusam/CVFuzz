@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { type ReactNode, useEffect, useRef, useState } from "react"
 import { Expand, LoaderCircle, Minimize } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -12,6 +12,7 @@ type VideoStageProps = {
   showFullscreenControl?: boolean
   registerVideo: (id: string, node: HTMLVideoElement | null) => void
   onTimeUpdate?: (time: number, duration: number) => void
+  overlay?: ReactNode
 }
 
 export function VideoStage({
@@ -22,6 +23,7 @@ export function VideoStage({
   showFullscreenControl = featured,
   registerVideo,
   onTimeUpdate,
+  overlay,
 }: VideoStageProps) {
   const [ready, setReady] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
@@ -63,6 +65,7 @@ export function VideoStage({
           onTimeUpdate(node.currentTime, Number.isFinite(node.duration) ? node.duration : 0)
         }}
       />
+      {overlay}
       {featured && !ready && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#030504] text-[11px] text-muted-foreground" aria-live="polite">
           <span className="flex items-center gap-2"><LoaderCircle className="size-4 animate-spin" /> Loading video preview…</span>
