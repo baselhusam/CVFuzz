@@ -314,6 +314,22 @@ def create_app(
             raise HTTPException(status_code=404, detail="Run not found")
         return _artifact_urls(read_run(run_path))
 
+    @app.get("/v1/runs/{run_id}/comparison/{transform_id}")
+    def get_comparison_evidence(run_id: str, transform_id: str) -> dict[str, object]:
+        run_path = root / safe_name(run_id)
+        if run_path.name != run_id or not (run_path / "manifest.json").is_file():
+            raise HTTPException(status_code=404, detail="Run not found")
+        run = read_run(run_path)
+        transforms = ((run.get("metrics") or {}).get("transforms") or [])
+        if transform_id not in {item.get("id") for item in transforms}:
+            raise HTTPException(status_code=404, detail="Transform not found in this run")
+        return {
+            "schema_version": 1,
+            "run_id": run_id,
+            "transform_id": transform_id,
+            "frames": VideoRunStore.open(run_path).comparison_evidence(transform_id),
+        }
+
     @app.get("/v1/runs/{run_id}/events")
     def stream_run_events(run_id: str) -> StreamingResponse:
         """Send live run snapshots over one Server-Sent Events connection."""

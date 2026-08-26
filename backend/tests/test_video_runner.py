@@ -101,6 +101,9 @@ transforms:
     assert not (run_path / "augmented").exists()
     assert (run_path / "baseline.jsonl").is_file()
     assert len((run_path / "frames.jsonl").read_text(encoding="utf-8").splitlines()) == 3
+    evidence = VideoRunStore.open(run_path).comparison_evidence("exposure")
+    assert len(evidence) == 3
+    assert all(event["events"][0]["kind"] == "missed" for event in evidence)
     stages = [
         json.loads(line)["stage"]
         for line in (run_path / "events.jsonl").read_text(encoding="utf-8").splitlines()

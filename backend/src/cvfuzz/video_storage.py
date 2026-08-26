@@ -107,6 +107,30 @@ class VideoRunStore:
                 stream.write(json.dumps(record, default=_json_default) + "\n")
         temporary.replace(self.frames_path)
 
+    def comparison_evidence(self, transform_id: str) -> list[dict[str, Any]]:
+        """Return persisted baseline-comparison events for one transformed stream."""
+        if not self.frames_path.is_file():
+            return []
+        frames: list[dict[str, Any]] = []
+        with self.frames_path.open(encoding="utf-8") as stream:
+            for line in stream:
+                record = json.loads(line)
+                transform = record.get("transforms", {}).get(transform_id, {})
+                events = [
+                    event
+                    for event in transform.get("failure_events", [])
+                    if event.get("kind") in {"missed", "class_flip"}
+                ]
+                if events:
+                    frames.append(
+                        {
+                            "frame": record["frame"],
+                            "timestamp_seconds": record["timestamp_seconds"],
+                            "events": events,
+                        }
+                    )
+        return frames
+
     def append_baseline(self, data: dict[str, Any]) -> None:
         with self.references_path.open("a", encoding="utf-8") as stream:
             stream.write(json.dumps(data, default=_json_default) + "\n")

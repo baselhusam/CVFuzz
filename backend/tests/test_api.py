@@ -89,6 +89,10 @@ transforms:
         assert payload["metrics"]["frames_analyzed"] == 1
         assert len(payload["artifacts"]) == 2
 
+        comparison = client.get(f"/v1/runs/{run_id}/comparison/exposure")
+        assert comparison.status_code == 200
+        assert comparison.json()["transform_id"] == "exposure"
+
         with client.stream("GET", f"/v1/runs/{run_id}/events") as events:
             assert events.status_code == 200
             assert "event: run" in "".join(events.iter_text())

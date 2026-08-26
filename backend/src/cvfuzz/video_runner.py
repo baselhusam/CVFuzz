@@ -736,10 +736,12 @@ class VideoEvaluationRunner:
                         if item.confidence >= self.config.failure.missed_below_confidence
                     ]
                     failures: Counter[str] = Counter()
+                    failure_events: list[dict[str, Any]] = []
                     for baseline in baselines:
                         failure = self.failure_detector.evaluate(baseline, predictions)
                         if failure:
                             failures[failure.kind] += 1
+                            failure_events.append(failure.to_dict())
                     writer.write(
                         _annotate(
                             transformed,
@@ -764,6 +766,7 @@ class VideoEvaluationRunner:
                         "detections": len(visible_predictions),
                         "failures": sum(failures.values()),
                         "failures_by_kind": dict(failures),
+                        "failure_events": failure_events,
                     }
                     frames += 1
                     report(frames)
