@@ -264,3 +264,5 @@ ranges for playable artifacts.
 CVFuzz is released under the [MIT License](LICENSE). Ultralytics software and model weights have
 their own licensing terms; review those terms before distributing a product that uses the
 Ultralytics adapter.
+
+Created by [Basel Husam](https://baselhusam.com).
