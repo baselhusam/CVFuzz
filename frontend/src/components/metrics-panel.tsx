@@ -1,7 +1,7 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { ArrowDown, ArrowUp, Search } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { ArrowDown, ArrowUp, Expand, Search, X } from "lucide-react"
 import {
   formatParameters,
   formatTime,
@@ -95,6 +95,27 @@ function MetricChart({ kind, metrics, visibleIds, hoverIndex, onHover }: { kind:
   )
 }
 
+function ExpandedChart({ kind, metrics, visibleIds, onClose }: { kind: ChartKind; metrics: RunMetrics; visibleIds: Set<string>; onClose: () => void }) {
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null)
+  const title = kind === "retention" ? "Detection retention over the stream" : "Failure events per sampled frame"
+  const subtitle = kind === "retention" ? "Expanded comparison across every selected transformed stream." : "Expanded view of failure events across every selected transformed stream."
+
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") onClose() }
+    window.addEventListener("keydown", closeOnEscape)
+    return () => window.removeEventListener("keydown", closeOnEscape)
+  }, [onClose])
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-ink/85 p-3 backdrop-blur-sm sm:p-7" role="dialog" aria-modal="true" aria-label={`Expanded ${title}`} onMouseDown={onClose}>
+      <div className="max-h-full w-full max-w-6xl overflow-y-auto border border-[#33424e] bg-[#090e14] p-4 shadow-[0_30px_100px_rgba(0,0,0,.65)] sm:p-6" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="mb-5 flex items-start justify-between gap-5"><div><p className="section-kicker text-signal">Expanded analysis</p><h3 className="mt-2 text-xl tracking-[-.03em]">{title}</h3><p className="mt-1 text-[11px] text-[#a7b2ba]">{subtitle} Hover inside the plot for a live sampled-frame readout.</p></div><button type="button" onClick={onClose} className="flex size-9 shrink-0 items-center justify-center border border-[#33424e] text-[#a7b2ba] transition-colors hover:border-signal hover:text-foreground" aria-label="Close expanded chart"><X className="size-4" /></button></div>
+        <MetricChart kind={kind} metrics={metrics} visibleIds={visibleIds} hoverIndex={hoverIndex} onHover={setHoverIndex} />
+      </div>
+    </div>
+  )
+}
+
 function DetailTable({ metrics }: { metrics: RunMetrics }) {
   const [query, setQuery] = useState("")
   const [severity, setSeverity] = useState<Severity>("all")
@@ -132,6 +153,7 @@ function DetailTable({ metrics }: { metrics: RunMetrics }) {
 export function MetricsPanel({ metrics }: { metrics: RunMetrics }) {
   const [visibleIds, setVisibleIds] = useState(() => new Set(metrics.transforms.map((item) => item.id)))
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
+  const [expandedChart, setExpandedChart] = useState<ChartKind | null>(null)
   const failureKinds = Object.entries(metrics.failure_events_by_kind || metrics.transforms.reduce<Record<string, number>>((total, item) => {
     for (const [kind, count] of Object.entries(item.failures_by_kind)) total[kind] = (total[kind] || 0) + count
     return total
@@ -147,9 +169,10 @@ export function MetricsPanel({ metrics }: { metrics: RunMetrics }) {
   return (
     <section id="metrics" className="mb-10 border-t border-border pt-8 md:mb-14 md:pt-10" aria-labelledby="metrics-heading">
       <header className="mb-5 flex flex-col justify-between gap-2 border-b border-border pb-3 sm:flex-row sm:items-end"><div><p className="section-kicker">Run analysis</p><h2 id="metrics-heading" className="mt-2 text-xl tracking-[-.03em]">Metrics</h2></div><p className="font-mono text-[8.5px] uppercase tracking-[.12em] text-muted-foreground">{metrics.transforms.length} streams · {sampleNote}</p></header>
-      <section className="mb-4 border border-border bg-card p-4 sm:p-5" aria-labelledby="retention-heading"><div className="mb-5 flex flex-col justify-between gap-4 xl:flex-row xl:items-start"><div><h3 id="retention-heading" className="text-[15px] tracking-[-.02em]">Detection retention over the stream</h3><p className="mt-1 font-mono text-[8.5px] uppercase tracking-[.1em] text-muted-foreground">Share of baseline objects still detected · {sampleNote}</p></div><div className="flex flex-wrap gap-1.5 xl:max-w-[650px] xl:justify-end">{metrics.transforms.map((item, index) => <button key={item.id} type="button" onClick={() => toggleSeries(item.id)} className={`flex items-center gap-1.5 border px-2.5 py-1.5 font-mono text-[8px] uppercase tracking-[.06em] transition-colors ${visibleIds.has(item.id) ? "border-input bg-background text-foreground" : "border-transparent bg-secondary text-muted-foreground line-through"}`}><i className="size-1.5" style={{ background: SERIES_COLORS[index % SERIES_COLORS.length] }} />{item.name}</button>)}</div></div><MetricChart kind="retention" metrics={metrics} visibleIds={visibleIds} hoverIndex={hoverIndex} onHover={setHoverIndex} /></section>
-      <section className="mb-4 border border-border bg-card p-4 sm:p-5" aria-labelledby="failure-chart-heading"><div className="mb-4 flex flex-col justify-between gap-2 sm:flex-row sm:items-baseline"><div><h3 id="failure-chart-heading" className="text-[15px] tracking-[-.02em]">Failure events per sampled frame</h3><p className="mt-1 text-[10px] text-muted-foreground">{failureKinds.length ? failureKinds.map(([kind]) => humanize(kind)).join(" · ") : "No failure events recorded"}</p></div><span className="font-mono text-[8px] uppercase tracking-[.1em] text-muted-foreground">{metrics.total_failures} total events</span></div><MetricChart kind="failures" metrics={metrics} visibleIds={visibleIds} hoverIndex={hoverIndex} onHover={setHoverIndex} /></section>
+      <section className="relative mb-4 border border-border bg-card p-4 sm:p-5" aria-labelledby="retention-heading"><button type="button" onClick={() => setExpandedChart("retention")} className="absolute right-4 top-4 flex size-8 items-center justify-center border border-input bg-background text-muted-foreground transition-colors hover:border-signal hover:text-foreground" aria-label="Expand detection retention chart"><Expand className="size-3.5" /></button><div className="mb-5 flex flex-col justify-between gap-4 pr-11 xl:flex-row xl:items-start"><div><h3 id="retention-heading" className="text-[15px] tracking-[-.02em]">Detection retention over the stream</h3><p className="mt-1 font-mono text-[8.5px] uppercase tracking-[.1em] text-muted-foreground">Share of baseline objects still detected · {sampleNote}</p></div><div className="flex flex-wrap gap-1.5 xl:max-w-[650px] xl:justify-end">{metrics.transforms.map((item, index) => <button key={item.id} type="button" onClick={() => toggleSeries(item.id)} className={`flex items-center gap-1.5 border px-2.5 py-1.5 font-mono text-[8px] uppercase tracking-[.06em] transition-colors ${visibleIds.has(item.id) ? "border-input bg-background text-foreground" : "border-transparent bg-secondary text-muted-foreground line-through"}`}><i className="size-1.5" style={{ background: SERIES_COLORS[index % SERIES_COLORS.length] }} />{item.name}</button>)}</div></div><MetricChart kind="retention" metrics={metrics} visibleIds={visibleIds} hoverIndex={hoverIndex} onHover={setHoverIndex} /></section>
+      <section className="relative mb-4 border border-border bg-card p-4 sm:p-5" aria-labelledby="failure-chart-heading"><button type="button" onClick={() => setExpandedChart("failures")} className="absolute right-4 top-4 flex size-8 items-center justify-center border border-input bg-background text-muted-foreground transition-colors hover:border-signal hover:text-foreground" aria-label="Expand failure events chart"><Expand className="size-3.5" /></button><div className="mb-4 flex flex-col justify-between gap-2 pr-11 sm:flex-row sm:items-baseline"><div><h3 id="failure-chart-heading" className="text-[15px] tracking-[-.02em]">Failure events per sampled frame</h3><p className="mt-1 text-[10px] text-muted-foreground">{failureKinds.length ? failureKinds.map(([kind]) => humanize(kind)).join(" · ") : "No failure events recorded"}</p></div><span className="font-mono text-[8px] uppercase tracking-[.1em] text-muted-foreground">{metrics.total_failures} total events</span></div><MetricChart kind="failures" metrics={metrics} visibleIds={visibleIds} hoverIndex={hoverIndex} onHover={setHoverIndex} /></section>
       <DetailTable metrics={metrics} />
+      {expandedChart && <ExpandedChart kind={expandedChart} metrics={metrics} visibleIds={visibleIds} onClose={() => setExpandedChart(null)} />}
     </section>
   )
 }
