@@ -152,14 +152,13 @@ cvfuzz inspect-video .cvfuzz/runs/<run-id>
 CVFuzz includes a local Next.js interface for uploading a model and video, tracking a run, and
 reviewing synchronized original and transformed videos side by side.
 
-Start the API from an activated backend environment:
+Start the API from the activated backend environment created in Quick start:
 
 ```bash
-cd backend
 cvfuzz serve
 ```
 
-Then, in another terminal, start the frontend:
+Then, from the repository root in another terminal, start the frontend:
 
 ```bash
 cd frontend
@@ -207,15 +206,16 @@ Start with [the default profile](backend/configs/default.yaml), or use the compa
 
 ## Artifacts and architecture
 
-Runs are deliberately self-contained and portable. The full-stream workflow writes a directory
-with the inputs, generated video, configuration, and machine-readable evidence:
+Runs are deliberately self-contained and portable. CLI full-stream runs use the configured
+`run.output_dir` (by default, `.cvfuzz/runs/`); web runs use `backend/.cvfuzz/web-runs/` by
+default. A web run contains the uploaded inputs, generated videos, configuration, and
+machine-readable evidence:
 
 ```text
 .cvfuzz/web-runs/<run-id>/
 ├── inputs/        # Uploaded model and source video
-├── augmented/     # Raw, full-length transformed intermediates
 ├── artifacts/     # Browser-ready annotated original + transform MP4s
-├── config.yaml    # Exact resolved configuration
+├── config.yaml    # Exact configuration used for the run
 ├── manifest.json  # Run identity and status
 ├── events.jsonl   # Progress event stream
 ├── baseline.jsonl # Original-frame reference detections
