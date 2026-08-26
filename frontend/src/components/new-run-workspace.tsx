@@ -507,6 +507,7 @@ function AugmentationCard({
   onReset: () => void
   resetAvailable: boolean
 }) {
+  const [editorOpen, setEditorOpen] = useState(false)
   return (
     <motion.article
       layout
@@ -555,17 +556,19 @@ function AugmentationCard({
         </span>
       </div>
 
-      <details className="group/editor">
-        <summary
-          aria-disabled={!transform.enabled}
-          onClick={(event) => { if (!transform.enabled) event.preventDefault() }}
-          className={`flex min-h-12 list-none items-center gap-2 px-3.5 text-[10px] text-muted-foreground ${transform.enabled ? "cursor-pointer hover:bg-secondary/45" : "cursor-not-allowed"}`}
+      <div>
+        <button
+          type="button"
+          disabled={!transform.enabled}
+          onClick={() => setEditorOpen((open) => !open)}
+          aria-expanded={editorOpen}
+          className={`flex min-h-12 w-full items-center gap-2 px-3.5 text-left text-[10px] text-muted-foreground ${transform.enabled ? "cursor-pointer hover:bg-secondary/45" : "cursor-not-allowed"}`}
         >
           <SlidersHorizontal className="size-3.5" />
           <span className="min-w-0 flex-1 truncate font-mono text-[8px]">{formatParameters(transform.parameters)}</span>
-          <ChevronDown className="size-3.5 transition-transform group-open/editor:rotate-180" />
-        </summary>
-        <div className="space-y-4 border-t border-border bg-secondary/30 px-3.5 py-4">
+          <ChevronDown className={`size-3.5 transition-transform ${editorOpen ? "rotate-180" : ""}`} />
+        </button>
+        {editorOpen && <div className="space-y-4 border-t border-border bg-secondary/30 px-3.5 py-4">
           {Object.entries(transform.parameters).map(([name, value]) => (
             <ParameterControl
               key={name}
@@ -585,8 +588,8 @@ function AugmentationCard({
               Reset to defaults
             </button>
           </div>
-        </div>
-      </details>
+        </div>}
+      </div>
     </motion.article>
   )
 }

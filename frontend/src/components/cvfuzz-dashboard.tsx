@@ -2,6 +2,7 @@
 
 import Image from "next/image"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { Dialog } from "@base-ui/react/dialog"
 import { motion } from "framer-motion"
 import {
   AlertTriangle,
@@ -23,6 +24,7 @@ import {
   Volume2,
   VolumeX,
   Pencil,
+  X,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { MetricsPanel } from "@/components/metrics-panel"
@@ -177,6 +179,103 @@ function RunStatus({ status }: { status: RunSummary["status"] }) {
   return <i className={`size-1.5 shrink-0 ${styles[status]}`} aria-hidden="true" />
 }
 
+type RunAction = {
+  type: "rename" | "stop" | "delete"
+  run: RunSummary
+}
+
+function RunActionDialog({
+  action,
+  onClose,
+  onRename,
+  onStop,
+  onDelete,
+}: {
+  action: RunAction
+  onClose: () => void
+  onRename: (run: RunSummary, name: string) => void
+  onStop: (run: RunSummary) => void
+  onDelete: (run: RunSummary) => void
+}) {
+  const nameInput = useRef<HTMLInputElement>(null)
+  const [name, setName] = useState(() => action.run.name || readableFileName(action.run.model.name))
+  const [nameError, setNameError] = useState<string | null>(null)
+  const runLabel = action.run.name || readableFileName(action.run.model.name)
+
+  const title = action.type === "rename"
+    ? "Rename test"
+    : action.type === "stop"
+      ? "Stop active test?"
+      : "Delete test permanently?"
+  const description = action.type === "rename"
+    ? "Give this saved robustness test a clear label."
+    : action.type === "stop"
+      ? "CVFuzz will finish the current inference batch, then preserve any evidence generated so far."
+      : "This removes the saved test, its uploads, and every generated artifact from this machine."
+  const confirmLabel = action.type === "rename" ? "Save name" : action.type === "stop" ? "Stop test" : "Delete test"
+
+  const submit = () => {
+    if (action.type === "rename") {
+      const nextName = name.trim()
+      if (!nextName) {
+        setNameError("Enter a name for this test.")
+        return
+      }
+      onRename(action.run, nextName)
+    } else if (action.type === "stop") {
+      onStop(action.run)
+    } else {
+      onDelete(action.run)
+    }
+    onClose()
+  }
+
+  return (
+    <Dialog.Root open onOpenChange={(nextOpen) => { if (!nextOpen) onClose() }}>
+      <Dialog.Portal>
+        <Dialog.Backdrop className="fixed inset-0 z-[90] bg-[#070b0d]/75 backdrop-blur-[2px] data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
+        <Dialog.Popup initialFocus={action.type === "rename" ? nameInput : true} className="fixed left-1/2 top-1/2 z-[91] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-hidden border border-border bg-popover shadow-[0_28px_90px_rgba(0,0,0,.46)] outline-none data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0">
+          <div className={`h-1 ${action.type === "delete" || action.type === "stop" ? "bg-failed" : "bg-signal"}`} />
+          <div className="p-5 sm:p-6">
+            <div className="flex items-start justify-between gap-5">
+              <div>
+                <p className={`section-kicker ${action.type === "delete" || action.type === "stop" ? "text-failed" : "text-signal"}`}>Run control</p>
+                <Dialog.Title className="mt-2 text-xl tracking-[-0.04em]">{title}</Dialog.Title>
+              </div>
+              <button type="button" onClick={onClose} className="flex size-7 shrink-0 items-center justify-center text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground" aria-label="Close dialog"><X className="size-4" /></button>
+            </div>
+            <Dialog.Description className="mt-3 max-w-sm text-[12px] leading-5 text-muted-foreground">{description}</Dialog.Description>
+            <div className="mt-5 border border-border bg-secondary/40 px-3 py-2.5">
+              <p className="section-kicker text-[7px]">Selected test</p>
+              <p className="mt-1 truncate text-[12px] font-medium" title={runLabel}>{runLabel}</p>
+            </div>
+            {action.type === "rename" && (
+              <label className="mt-5 block">
+                <span className="section-kicker text-[8px]">Test name</span>
+                <input
+                  ref={nameInput}
+                  value={name}
+                  onChange={(event) => { setName(event.target.value); setNameError(null) }}
+                  onKeyDown={(event) => { if (event.key === "Enter") submit() }}
+                  maxLength={120}
+                  className="mt-2 h-10 w-full border border-input bg-card px-3 text-[13px] outline-none transition-colors focus:border-signal"
+                  aria-invalid={Boolean(nameError)}
+                  aria-describedby={nameError ? "run-name-error" : undefined}
+                />
+                {nameError && <span id="run-name-error" className="mt-1.5 block text-[10px] text-failed">{nameError}</span>}
+              </label>
+            )}
+            <div className="mt-6 flex items-center justify-end gap-2">
+              <Button variant="outline" onClick={onClose}>Cancel</Button>
+              <Button variant={action.type === "rename" ? "default" : "destructive"} onClick={submit}>{confirmLabel}</Button>
+            </div>
+          </div>
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
+  )
+}
+
 function RunsSidebar({
   runs,
   selectedId,
@@ -198,7 +297,8 @@ function RunsSidebar({
   onDelete: (run: RunSummary) => void
   actionRunId: string | null
 }) {
-  const mobileDetails = useRef<HTMLDetailsElement>(null)
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const runItems = runs.map((run) => {
     const statusLabel = run.status === "completed" ? "Complete" : run.status[0].toUpperCase() + run.status.slice(1)
     const active = run.status === "queued" || run.status === "running"
@@ -209,7 +309,8 @@ function RunsSidebar({
           type="button"
           onClick={() => {
             onSelect(run.id)
-            mobileDetails.current?.removeAttribute("open")
+            setMobileOpen(false)
+            setOpenMenuId(null)
           }}
           className={`w-full rounded-lg border px-3 py-2.5 pr-10 text-left transition-colors duration-200 ${
             selectedId === run.id
@@ -232,40 +333,47 @@ function RunsSidebar({
             </span>
           </div>
         </button>
-        <details className="absolute right-2 top-2 z-20">
-          <summary className="flex size-6 cursor-pointer list-none items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground [&::-webkit-details-marker]:hidden" aria-label={`Actions for ${run.name || readableFileName(run.model.name)}`}>
+        <div className="absolute right-2 top-2 z-20">
+          <button
+            type="button"
+            onClick={() => setOpenMenuId((current) => current === run.id ? null : run.id)}
+            className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            aria-label={`Actions for ${run.name || readableFileName(run.model.name)}`}
+            aria-expanded={openMenuId === run.id}
+            aria-haspopup="menu"
+          >
             <Ellipsis className="size-3.5" />
-          </summary>
-          <div className="absolute right-0 top-7 w-36 overflow-hidden rounded-md border border-border bg-popover p-1 shadow-[0_14px_32px_rgba(0,0,0,.2)]">
-            <button type="button" disabled={actionBusy} onClick={() => onRename(run)} className="sidebar-action"><Pencil className="size-3" /> Rename</button>
+          </button>
+          {openMenuId === run.id && <div role="menu" className="absolute right-0 top-7 w-36 overflow-hidden border border-border bg-popover p-1 shadow-[0_14px_32px_rgba(0,0,0,.2)]">
+            <button type="button" role="menuitem" disabled={actionBusy} onClick={() => { setOpenMenuId(null); onRename(run) }} className="sidebar-action"><Pencil className="size-3" /> Rename</button>
             {active ? (
-              <button type="button" disabled={actionBusy} onClick={() => onStop(run)} className="sidebar-action text-failed"><Square className="size-3 fill-current" /> Stop run</button>
+              <button type="button" role="menuitem" disabled={actionBusy} onClick={() => { setOpenMenuId(null); onStop(run) }} className="sidebar-action text-failed"><Square className="size-3 fill-current" /> Stop run</button>
             ) : (
               <>
-                <button type="button" disabled={actionBusy} onClick={() => onRerun(run)} className="sidebar-action"><RotateCcw className="size-3" /> Run again</button>
-                <button type="button" disabled={actionBusy} onClick={() => onDelete(run)} className="sidebar-action text-failed"><Trash2 className="size-3" /> Delete</button>
+                <button type="button" role="menuitem" disabled={actionBusy} onClick={() => { setOpenMenuId(null); onRerun(run) }} className="sidebar-action"><RotateCcw className="size-3" /> Run again</button>
+                <button type="button" role="menuitem" disabled={actionBusy} onClick={() => { setOpenMenuId(null); onDelete(run) }} className="sidebar-action text-failed"><Trash2 className="size-3" /> Delete</button>
               </>
             )}
-          </div>
-        </details>
+          </div>}
+        </div>
       </div>
     )
   })
 
   return (
     <aside id="runs-sidebar" className="min-w-0 overflow-hidden border-b border-border bg-card lg:sticky lg:top-14 lg:h-[calc(100vh-3.5rem)] lg:border-b-0 lg:border-r">
-      <details ref={mobileDetails} className="group lg:hidden">
-        <summary className="flex h-12 cursor-pointer list-none items-center gap-2 px-4 text-xs font-medium hover:bg-secondary">
+      <div className="lg:hidden">
+        <button type="button" onClick={() => setMobileOpen((open) => !open)} className="flex h-12 w-full items-center gap-2 px-4 text-xs font-medium hover:bg-secondary" aria-expanded={mobileOpen} aria-controls="mobile-runs-list">
           Recent tests
           <span className="num rounded-full bg-secondary px-2 py-0.5 text-[9px] text-steel">{runs.length}</span>
-          <ChevronDown className="ml-auto size-4 text-muted-foreground transition-transform group-open:rotate-180" />
-        </summary>
-        <div className="max-h-80 space-y-1 overflow-y-auto border-t border-border p-2.5">
+          <ChevronDown className={`ml-auto size-4 text-muted-foreground transition-transform ${mobileOpen ? "rotate-180" : ""}`} />
+        </button>
+        {mobileOpen && <div id="mobile-runs-list" className="max-h-80 space-y-1 overflow-y-auto border-t border-border p-2.5">
           <p className="mb-2 px-1 text-[10px] text-muted-foreground">Select a previous test</p>
           {runItems}
           {!runs.length && !loading && <p className="p-3 text-xs text-muted-foreground">Completed tests will appear here.</p>}
-        </div>
-      </details>
+        </div>}
+      </div>
 
       <div className="hidden h-full lg:block">
       <div className="flex h-12 items-center border-b border-border px-3.5">
@@ -745,6 +853,7 @@ export function CVFuzzDashboard() {
   const [error, setError] = useState<string | null>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [actionRunId, setActionRunId] = useState<string | null>(null)
+  const [pendingAction, setPendingAction] = useState<RunAction | null>(null)
 
   const selectRun = useCallback(async (id: string) => {
     setSelectedId(id)
@@ -817,9 +926,8 @@ export function CVFuzzDashboard() {
     if (selectedId === run.id) setSelectedRun(run)
   }
 
-  const handleRename = async (run: RunSummary) => {
-    const name = window.prompt("Name this test", run.name || readableFileName(run.model.name))?.trim()
-    if (!name || name === run.name) return
+  const handleRename = async (run: RunSummary, name: string) => {
+    if (name === run.name) return
     setActionRunId(run.id)
     setError(null)
     try {
@@ -832,7 +940,6 @@ export function CVFuzzDashboard() {
   }
 
   const handleStop = async (run: RunSummary) => {
-    if (!window.confirm("Stop this test after its current batch finishes?")) return
     setActionRunId(run.id)
     setError(null)
     try {
@@ -872,7 +979,6 @@ export function CVFuzzDashboard() {
   }
 
   const handleDelete = async (run: RunSummary) => {
-    if (!window.confirm(`Delete “${run.name || readableFileName(run.model.name)}” and all of its local artifacts?`)) return
     setActionRunId(run.id)
     setError(null)
     try {
@@ -921,6 +1027,14 @@ export function CVFuzzDashboard() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      {pendingAction && <RunActionDialog
+        key={`${pendingAction.type}-${pendingAction.run.id}`}
+        action={pendingAction}
+        onClose={() => setPendingAction(null)}
+        onRename={(run, name) => void handleRename(run, name)}
+        onStop={(run) => void handleStop(run)}
+        onDelete={(run) => void handleDelete(run)}
+      />}
       <a href="#main-content" className="sr-only fixed left-3 top-3 z-[100] rounded-md bg-foreground px-3 py-2 text-xs text-background focus:not-sr-only">Skip to main content</a>
       <Header
         onNewRun={newRun}
@@ -935,10 +1049,10 @@ export function CVFuzzDashboard() {
             selectedId={selectedId}
             loading={loadingRuns}
             onSelect={(id) => void selectRun(id)}
-            onRename={(run) => void handleRename(run)}
-            onStop={(run) => void handleStop(run)}
+            onRename={(run) => setPendingAction({ type: "rename", run })}
+            onStop={(run) => setPendingAction({ type: "stop", run })}
             onRerun={(run) => void handleRerun(run)}
-            onDelete={(run) => void handleDelete(run)}
+            onDelete={(run) => setPendingAction({ type: "delete", run })}
             actionRunId={actionRunId}
           />
         </div>
