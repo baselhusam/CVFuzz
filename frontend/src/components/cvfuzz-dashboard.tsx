@@ -127,7 +127,6 @@ function Header({
         </span>
         <span className="min-w-0 text-left">
           <span className="block text-[15px] font-semibold leading-none tracking-[-0.05em] transition-colors group-hover:text-signal">CVFuzz</span>
-          <span className="mt-1 hidden font-mono text-[7px] font-medium uppercase leading-none tracking-[0.2em] text-muted-foreground sm:block">Robustness lab</span>
         </span>
       </button>
       <span className="hidden h-6 w-px bg-border lg:block" />
@@ -700,7 +699,7 @@ function CompletedRun({ run }: { run: RunRecord }) {
   return <><VideoWall run={run} selectedTransformId={selectedTransformId} comparisonActive={comparisonActive} onCompare={openComparison} onExitComparison={() => setComparisonActive(false)} /><MetricsPanel metrics={run.metrics!} onCompare={openComparison} /></>
 }
 
-function ActiveRun({ run, transforms }: { run: RunRecord; transforms: TransformConfig[] }) {
+function ActiveRun({ run, transforms, onStop, stopping }: { run: RunRecord; transforms: TransformConfig[]; onStop: (run: RunSummary) => void; stopping: boolean }) {
   if (run.status === "completed" && run.metrics) {
     return <CompletedRun key={run.id} run={run} />
   }
@@ -743,7 +742,8 @@ function ActiveRun({ run, transforms }: { run: RunRecord; transforms: TransformC
   return (
     <div className="mx-auto max-w-6xl py-7 md:py-10">
       <section className={`overflow-hidden border bg-card ${terminal ? "border-failed/40" : "border-border"}`} aria-labelledby="live-run-heading">
-        <div className="border-b border-border px-5 py-7 text-center md:px-7 md:py-9">
+        <div className="relative border-b border-border px-5 py-7 text-center md:px-7 md:py-9">
+          {running && <button type="button" onClick={() => onStop(run)} disabled={stopping} className="absolute right-5 top-5 inline-flex items-center gap-2 border border-failed/70 px-3 py-2 font-mono text-[8px] uppercase tracking-[.1em] text-failed transition-colors hover:bg-failed hover:text-white disabled:cursor-not-allowed disabled:opacity-60 md:right-7 md:top-7" aria-label="Stop active run"><Square className="size-3 fill-current" />{stopping ? "Stopping…" : "Stop run"}</button>}
           <div className="mx-auto max-w-2xl">
             <p className={`section-kicker inline-flex items-center gap-2 ${terminal ? "text-failed" : "text-signal"}`}>
               {failed ? <AlertTriangle className="size-3" /> : stopped ? <Square className="size-3 fill-current" /> : <LoaderCircle className="size-3 animate-spin" />}
@@ -761,21 +761,23 @@ function ActiveRun({ run, transforms }: { run: RunRecord; transforms: TransformC
 
         {!terminal && (
           <div className="px-5 py-5 md:px-7">
-            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-5" aria-label="Run stage progress">
-              {stages.map((stage, index) => {
-                const position = index + 1
-                const complete = position < stageIndex || readyArtifacts.some((artifact) => artifact.id === stage.id)
-                const active = position === stageIndex && running
-                return (
-                  <div key={stage.id} aria-current={active ? "step" : undefined} className={`min-h-15 border px-3 py-2.5 ${complete ? "border-border bg-card" : active ? "border-signal bg-signal-soft" : "border-border bg-secondary/20"}`}>
-                    <div className="flex items-start justify-between gap-2">
-                      <span className={`num text-[8px] ${active ? "text-signal" : complete ? "text-stable" : "text-muted-foreground"}`}>{String(position).padStart(2, "0")}</span>
-                      {complete ? <Check className="size-3.5 text-stable" aria-label="Completed" /> : active ? <span className="mt-1 size-1.5 bg-signal" aria-label="In progress" /> : <span className="mt-1 size-1.5 rounded-full border border-queued" aria-label="Queued" />}
+            <div className="overflow-x-auto pb-1 [scrollbar-width:thin]">
+              <div className="grid min-w-[40rem] grid-cols-10 gap-1.5 md:min-w-0" aria-label="Run stage progress">
+                {stages.map((stage, index) => {
+                  const position = index + 1
+                  const complete = position < stageIndex || readyArtifacts.some((artifact) => artifact.id === stage.id)
+                  const active = position === stageIndex && running
+                  return (
+                    <div key={stage.id} aria-current={active ? "step" : undefined} className={`min-h-15 border px-3 py-2.5 ${complete ? "border-border bg-card" : active ? "border-signal bg-signal-soft" : "border-border bg-secondary/20"}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <span className={`num text-[8px] ${active ? "text-signal" : complete ? "text-stable" : "text-muted-foreground"}`}>{String(position).padStart(2, "0")}</span>
+                        {complete ? <Check className="size-3.5 text-stable" aria-label="Completed" /> : active ? <span className="mt-1 size-1.5 bg-signal" aria-label="In progress" /> : <span className="mt-1 size-1.5 rounded-full border border-queued" aria-label="Queued" />}
+                      </div>
+                      <p className="mt-2 truncate font-mono text-[9px] uppercase tracking-[.08em]">{stage.label}</p>
                     </div>
-                    <p className="mt-2 truncate font-mono text-[9px] uppercase tracking-[.08em]">{stage.label}</p>
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
             </div>
 
             <div className="mt-5 flex items-center gap-3">
@@ -1060,7 +1062,7 @@ export function CVFuzzDashboard() {
           {!initialLoaded ? (
             <LoadingWorkspace />
           ) : selectedRun ? (
-            <ActiveRun key={selectedRun.id} run={selectedRun} transforms={transforms} />
+            <ActiveRun key={selectedRun.id} run={selectedRun} transforms={transforms} onStop={(run) => setPendingAction({ type: "stop", run })} stopping={actionRunId === selectedRun.id} />
           ) : (
             <NewRunWorkspace
               model={model}

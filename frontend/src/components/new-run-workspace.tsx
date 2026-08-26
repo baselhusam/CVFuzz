@@ -9,6 +9,7 @@ import {
   ImageIcon,
   LoaderCircle,
   Play,
+  Settings2,
   SlidersHorizontal,
   Sparkles,
 } from "lucide-react"
@@ -701,6 +702,7 @@ export function NewRunWorkspace({
               aria-controls="runtime-controls"
               className="flex w-full items-center gap-4 border border-border bg-background px-4 py-3 text-left transition-colors hover:border-foreground/20 hover:bg-secondary/40"
             >
+              <Settings2 className="size-4 shrink-0 text-signal" />
               <span className="min-w-0 flex-1">
                 <span id="runtime-heading" className="block text-[13px] font-medium">Run settings</span>
                 <span className="mt-1 block truncate font-mono text-[9px] text-muted-foreground">{summary}</span>
