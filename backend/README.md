@@ -1,6 +1,7 @@
 # CVFuzz backend
 
-CVFuzz provides two independent local-first workflows:
+CVFuzz is a local-first robustness-testing toolkit for computer-vision models. It provides two
+independent workflows:
 
 - Boundary search finds the smallest realistic degradation that destabilizes an object.
 - Full-stream evaluation renders the original plus one full annotated video for every enabled
@@ -8,7 +9,20 @@ CVFuzz provides two independent local-first workflows:
 
 Both workflows use filesystem artifacts. No database or remote service is required.
 
+## Install
+
+Install the CLI and the optional Ultralytics adapter needed for `.pt` detection models:
+
+```bash
+python -m pip install "cvfuzz[yolo]"
+```
+
+CVFuzz supports Python 3.11. See the [project repository](https://github.com/baselhusam/CVFuzz)
+for the web interface, Docker deployment, and full documentation.
+
 ## Setup
+
+For development from a source checkout:
 
 ```bash
 cd backend
