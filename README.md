@@ -12,6 +12,7 @@
 
 <p align="center">
   <a href="https://baselhusam.github.io/CVFuzz/"><img src="https://img.shields.io/badge/Website-Visit%20CVFuzz-91F766?style=for-the-badge&logo=googlechrome&logoColor=101510" alt="CVFuzz website"></a>
+  <a href="https://pypi.org/project/cvfuzz/"><img src="https://img.shields.io/pypi/v/cvfuzz?style=for-the-badge&logo=pypi&logoColor=white" alt="PyPI package"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-7C5CFC?style=for-the-badge" alt="MIT License"></a>
   <a href="backend/pyproject.toml"><img src="https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.11"></a>
   <a href="frontend/package.json"><img src="https://img.shields.io/badge/Next.js-16-000000?style=for-the-badge&logo=nextdotjs" alt="Next.js 16"></a>
